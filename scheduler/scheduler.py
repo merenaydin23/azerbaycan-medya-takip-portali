@@ -172,46 +172,7 @@ def run_media_monitoring_pipeline() -> dict:
             item["id"] = news_id
             relevant_articles_saved.append(item)
 
-        # Step 2.5: Generate Qwen summaries and refine LLM relevance classification in parallel
-        if relevant_articles_saved:
-            logger.info(f"Generating Qwen summaries & relevance classifications for {len(relevant_articles_saved)} saved news items in parallel...")
-            def process_article(item):
-                try:
-                    title = item.get("title", "")
-                    summary = item.get("summary", "")
-                    content_to_summarize = summary
-                    if not summary or len(summary.strip()) < 10 or summary == "..." or summary == "` and `":
-                        content_to_summarize = title
-                    
-                    # 1. Summary
-                    q_sum = generate_qwen_summary(title, content_to_summarize)
-                    if q_sum:
-                        update_news_summary(item["id"], q_sum)
-                        item["summary"] = q_sum
-
-                    # 2. Detailed LLM Azerbaijan Relevance check if candidate or keywords present
-                    candidate_keywords = ["azerbaycan", "baku", "bakü", "aliyev", "ermenistan", "paşinyan", "karabağ", "zengezur", "zangezur", "şuşa", "socar", "tanap", "tdt", "türk devletleri", "nahçıvan", "hazar"]
-                    combined_text = (title + " " + (q_sum or content_to_summarize)).lower()
-                    if any(kw in combined_text for kw in candidate_keywords):
-                        rel_info = check_stage2_llm_relevance(title, q_sum or content_to_summarize, item.get("source_name"), item.get("category"))
-                        if rel_info.get("ilgili_mi"):
-                            update_news_relevance_classification(
-                                item["id"],
-                                True,
-                                rel_info.get("ilgi_kategorisi", "Doğrudan"),
-                                rel_info.get("guven_skoru", 0.95),
-                                rel_info.get("gerekce", "")
-                            )
-                            item["ilgili_mi"] = 1
-                            item["ilgi_kategorisi"] = rel_info.get("ilgi_kategorisi", "Doğrudan")
-                            item["gerekce"] = rel_info.get("gerekce", "")
-                except Exception as e:
-                    logger.error(f"Error processing article {item.get('id')}: {e}")
-
-            with ThreadPoolExecutor(max_workers=20) as executor:
-                list(executor.map(process_article, relevant_articles_saved))
-
-        logger.info(f"Step 2 Complete: Kept {len(relevant_articles_saved)} articles from last 3 days.")
+        logger.info(f"Step 2 Complete: Saved and categorized {len(relevant_articles_saved)} new articles.")
 
         # Step 3: Cross Comparison & Inconsistency Detection
         today_str = datetime.now().strftime("%Y-%m-%d")
