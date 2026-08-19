@@ -1,0 +1,987 @@
+/* --- AZERBAYCAN BÜYÜKELÇİLİĞİ MEDYA TAKİP PORTALI STİL DOSYASI --- */
+
+:root {
+    /* Azerbaycan Bayrağı Renk Paleti */
+    --az-blue: #0092bc;
+    --az-red: #e4002b;
+    --az-green: #009775;
+
+    /* Nötr Tonlar */
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-surface: #f1f5f9;
+    --border-color: #e2e8f0;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-subtle: #94a3b8;
+
+    /* Vurgular */
+    --inconsistency-bg: #fff1f2;
+    --inconsistency-border: #f87171;
+    --inconsistency-text: #991b1b;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* 1. Üst Bayrak Şeridi */
+.flag-stripe {
+    display: flex;
+    height: 6px;
+    width: 100%;
+}
+.flag-stripe .blue { background-color: var(--az-blue); }
+.flag-stripe .red { background-color: var(--az-red); }
+.flag-stripe .green { background-color: var(--az-green); }
+
+/* Layout & Container */
+.container {
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* 2. Header */
+.app-header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.brand-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Header Buton ve Seçiciler */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Dil Seçici Butonlar */
+.language-selector-wrapper {
+    display: flex;
+    background: var(--bg-surface);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    gap: 2px;
+}
+
+.lang-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lang-btn.active {
+    background: #ffffff;
+    color: var(--az-red);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Filtre Geçiş Butonları */
+/* Arama Çubuğu */
+.search-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-input-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 2px 10px;
+    transition: all 0.2s ease;
+}
+
+.search-input-box:focus-within {
+    border-color: var(--az-blue);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 146, 188, 0.12);
+}
+
+.search-icon {
+    color: var(--text-muted);
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.search-input {
+    border: none;
+    background: transparent;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-main);
+    width: 220px;
+    padding: 6px 0;
+    outline: none;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.clear-search-btn {
+    background: none;
+    border: none;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 50%;
+    line-height: 1;
+}
+
+.clear-search-btn:hover {
+    color: var(--az-red);
+}
+
+.btn-search {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-search:hover {
+    background-color: #ffffff;
+    border-color: var(--az-blue);
+    color: var(--az-blue);
+}
+
+.date-selector-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-surface);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.date-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.date-select {
+    background: transparent;
+    border: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    outline: none;
+}
+
+/* Görünüm Sekmeleri (Tüm Medya vs Azerbaycan Gündemi) */
+.view-tabs-container {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.view-tabs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-surface);
+    padding: 5px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    width: fit-content;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.view-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.view-tab-btn:hover {
+    color: var(--text-main);
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.view-tab-btn.active {
+    background: #ffffff;
+    color: var(--az-blue);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+#tabAzAgenda.active {
+    color: #0b7285;
+    border: 1px solid rgba(0, 181, 142, 0.25);
+}
+
+.tab-count {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--bg-body);
+    color: var(--text-muted);
+}
+
+.tab-count.az-count {
+    background: rgba(0, 181, 142, 0.12);
+    color: #087f5b;
+}
+
+/* Azerbaycan Gündemi Alt Kategori Filtre Butonları */
+.az-subfilters-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: #f8fafc;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    animation: fadeIn 0.25s ease;
+}
+
+.subfilter-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.az-filter-pill {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.az-filter-pill:hover {
+    border-color: #00b58e;
+    color: #087f5b;
+    background: #f0fdf4;
+}
+
+.az-filter-pill.active {
+    background: #00b58e;
+    border-color: #00b58e;
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 181, 142, 0.25);
+}
+
+/* Azerbaycan Gündemi Rozeti & Tooltip */
+.az-agenda-badge-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-left: 6px;
+}
+
+.az-agenda-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(0, 181, 142, 0.12);
+    color: #087f5b;
+    border: 1px solid rgba(0, 181, 142, 0.35);
+    cursor: help;
+    transition: all 0.2s ease;
+}
+
+.az-agenda-badge:hover {
+    background: rgba(0, 181, 142, 0.22);
+    box-shadow: 0 1px 4px rgba(0, 181, 142, 0.2);
+}
+
+.az-badge-sub {
+    font-weight: 500;
+    opacity: 0.85;
+}
+
+.az-badge-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    transform: translateY(6px);
+    background: #1e293b;
+    color: #f8fafc;
+    padding: 10px 12px;
+    border-radius: 8px;
+    width: 260px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    z-index: 50;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+.az-agenda-badge-wrapper:hover .az-badge-tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.az-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #38bdf8;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+.az-tooltip-score {
+    color: #4ade80;
+    font-size: 10.5px;
+}
+
+.az-tooltip-desc {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: #e2e8f0;
+    margin: 0;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: var(--az-blue);
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 146, 188, 0.2);
+}
+
+.btn-primary:hover {
+    background-color: #007ca0;
+    transform: translateY(-1px);
+}
+
+/* 3. Main Düzen (Sidebar + Feed) */
+.main-layout {
+    padding: 24px 0;
+}
+
+.dashboard-body {
+    display: flex;
+    gap: 32px;
+    align-items: start;
+}
+
+@media (max-width: 992px) {
+    .dashboard-body {
+        flex-direction: column;
+    }
+    .sources-sidebar {
+        width: 100% !important;
+        position: static !important;
+    }
+}
+
+/* SOL BÖLÜM: Sidebar */
+.sources-sidebar {
+    width: 320px;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 75px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+}
+
+.sidebar-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sources-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.menu-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 8px 0;
+}
+
+.source-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+}
+
+.source-menu-item:hover {
+    background-color: var(--bg-surface);
+    color: var(--text-main);
+}
+
+.source-menu-item.active {
+    background-color: var(--az-blue);
+    color: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(0, 146, 188, 0.15);
+}
+
+.source-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+/* Dots based on category config */
+.dot-aa { background-color: var(--az-blue); }
+.dot-trt { background-color: var(--az-green); }
+.dot-iha { background-color: #f59e0b; }
+.dot-milliyet { background-color: #84cc16; }
+.dot-hurriyet { background-color: #06b6d4; }
+.dot-ahaber { background-color: #f97316; }
+.dot-yenisafak { background-color: #ef4444; }
+.dot-sabah { background-color: #a855f7; }
+.dot-turkiyegazetesi { background-color: #e11d48; }
+.dot-sozcu { background-color: #2563eb; }
+.dot-cumhuriyet { background-color: #059669; }
+.dot-halktv { background-color: #db2777; }
+.dot-t24 { background-color: #4b5563; }
+.dot-birgun { background-color: #14b8a6; }
+.dot-other { background-color: #6b7280; }
+
+.source-item-count {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--bg-surface);
+    color: var(--text-muted);
+}
+
+.source-menu-item.active .source-item-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* SAĞ BÖLÜM: Haber Akışı */
+.news-feed-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Özet Minibar */
+.summary-minibar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.summary-mini-card {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    padding: 12px 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    box-shadow: var(--shadow-sm);
+}
+
+.mini-card-val {
+    font-family: 'Outfit', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.mini-card-lbl {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+/* Canlı Tarama Durum Bannerı */
+.status-banner {
+    display: none;
+    align-items: center;
+    gap: 16px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid var(--az-blue);
+    padding: 14px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: #1e40af;
+    font-size: 14px;
+}
+
+.status-banner.active {
+    display: flex;
+}
+
+.status-sub {
+    display: block;
+    font-size: 12.5px;
+    color: #3b82f6;
+    margin-top: 2px;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #bfdbfe;
+    border-top-color: var(--az-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Bilgi / Prensip Notu */
+.disclaimer-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+.disclaimer-bar svg {
+    color: var(--az-blue);
+    flex-shrink: 0;
+}
+
+/* Kart Akışı */
+.cards-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Haber Kartı (Kollaps / Akordeon Tasarım) */
+.news-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.news-card:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    border-color: #cbd5e1;
+}
+
+.card-header-main {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.source-tag {
+    font-weight: 700;
+    color: var(--az-blue);
+}
+
+.author-tag {
+    color: var(--text-muted);
+}
+
+.date-tag {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-subtle);
+    font-weight: 600;
+}
+
+.title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
+.card-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--text-main);
+    transition: color 0.15s ease;
+}
+
+.news-card:hover .card-title {
+    color: var(--az-blue);
+}
+
+.chevron-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: transform 0.25s ease;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* Genişleyen Detay Bölümü */
+.card-details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+}
+
+.card-details-inner {
+    padding-top: 16px;
+    padding-bottom: 8px; /* Alt kısımda ekstra boşluk */
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.card-summary {
+    font-size: 13.5px;
+    color: #334155;
+    line-height: 1.55;
+}
+
+/* Genişletilmiş Kart Durumu */
+.news-card.expanded {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: var(--shadow-md);
+    cursor: default;
+}
+
+.news-card.expanded .chevron-icon {
+    transform: rotate(180deg);
+    color: var(--az-blue);
+}
+
+/* Tutarsızlık / Çelişki Kutusu */
+.news-card.inconsistent-card {
+    border-left: 4px solid var(--az-red);
+}
+
+.news-card.inconsistent-card.expanded {
+    border-color: var(--inconsistency-border);
+    border-left: 4px solid var(--az-red);
+}
+
+.inconsistency-box {
+    background: var(--inconsistency-bg);
+    border: 1px solid var(--inconsistency-border);
+    border-left: 3px solid var(--az-red);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+
+.inconsistency-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--inconsistency-text);
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.inconsistency-note {
+    font-size: 12px;
+    color: var(--inconsistency-text);
+    line-height: 1.35;
+    font-weight: 500;
+}
+
+/* Kart Alt Rozetler */
+.card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 6px;
+    flex-wrap: wrap;
+}
+
+.tags-cluster {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 5px;
+}
+
+.badge-relevance {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.badge-aspect {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.link-original {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--az-blue);
+    text-decoration: none;
+    margin-left: auto;
+}
+
+.link-original:hover {
+    text-decoration: underline;
+}
+
+/* Sütun Altı Daha Fazla Göster Butonu */
+.load-more-btn {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px;
+    background: #ffffff;
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.load-more-btn:hover {
+    color: var(--az-blue);
+    border-color: #cbd5e1;
+    background: var(--bg-surface);
+    transform: translateY(-1px);
+}
+
+/* Empty State */
+.empty-state {
+    background: #ffffff;
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 32px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13.5px;
+}
+
+/* 5. Footer */
+.app-footer {
+    background: #ffffff;
+    border-top: 1px solid var(--border-color);
+    margin-top: 40px;
+    padding: 16px 24px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.footer-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.footer-dot {
+    margin: 0 8px;
+    color: var(--text-subtle);
+}
+
+/* Yapay Zeka Özetleme Yükleniyor Metni */
+.ai-loader-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--az-blue);
+    animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
+/* Crawl Source Indicators */
+.crawl-source-tag {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-block;
+}
+.badge-rss {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+.badge-scraping {
+    background-color: #e0f2fe;
+    color: #0369a1;
+}
+.badge-serpapi {
+    background-color: #f3e8ff;
+    color: #7e22ce;
+}
+

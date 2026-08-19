@@ -1,0 +1,110 @@
+<div class="news-card {% if item.inconsistency_status == 1 %}inconsistent-card{% endif %} {% if item.ilgili_mi == 1 %}az-relevant-card{% endif %}" 
+     id="card-{{ item.id }}" 
+     data-source="{{ item.source_name }}" 
+     data-category="{{ item.category }}"
+     data-ilgili="{% if item.ilgili_mi == 1 %}true{% else %}false{% endif %}"
+     data-ilgi-kategorisi="{{ item.ilgi_kategorisi or 'İlgisiz' }}"
+     data-ai-summarized="{% if item.summary and item.summary|length > 20 and not item.summary == '...' and not item.summary == '` and `' %}true{% else %}false{% endif %}"
+     onclick="toggleCardExpansion(this)">
+    
+    <!-- Kart Başlığı (Her Zaman Görünür) -->
+    <div class="card-header-main">
+        <div class="card-meta">
+            <span class="source-tag">{{ item.source_name }}</span>
+            <span class="crawl-source-tag badge-{{ (item.veri_kaynagi or 'Scraping').lower() }}">{{ item.veri_kaynagi or 'Scraping' }}</span>
+            {% if item.author %}
+                <span class="author-tag">• {{ item.author }}</span>
+            {% endif %}
+            <span class="date-tag">{{ item.publish_date.split(' ')[1][:5] }}</span>
+            
+            {% if item.ilgili_mi == 1 %}
+                <div class="az-agenda-badge-wrapper" onclick="event.stopPropagation()">
+                    <span class="az-agenda-badge">
+                        🇦🇿 Azerbaycan Gündemi
+                        {% if item.ilgi_kategorisi and item.ilgi_kategorisi != 'İlgisiz' and item.ilgi_kategorisi != 'Doğrudan' %}
+                            <span class="az-badge-sub">• {{ item.ilgi_kategorisi }}</span>
+                        {% endif %}
+                    </span>
+                    <div class="az-badge-tooltip">
+                        <div class="az-tooltip-header">
+                            <span>🇦🇿 {{ item.ilgi_kategorisi or 'Azerbaycan Gündemi' }}</span>
+                            <span class="az-tooltip-score">{% if item.guven_skoru %}%{{ (item.guven_skoru * 100)|round|int }}{% else %}%95{% endif %}</span>
+                        </div>
+                        <p class="az-tooltip-desc">{{ item.gerekce or item.llm_relevance_explanation or 'Azerbaycan ile ilgili haber.' }}</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="title-row">
+            <h3 class="card-title">{{ item.title }}</h3>
+            <span class="chevron-icon">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </span>
+        </div>
+    </div>
+
+    <!-- Genişleyen Detay Alanı -->
+    <div class="card-details">
+        <div class="card-details-inner">
+            <!-- Özet -->
+            <p class="card-summary" id="summary-text-{{ item.id }}">
+                {% if item.summary and item.summary|length > 20 and not item.summary == '...' and not item.summary == '` and `' %}
+                    {{ item.summary }}
+                {% else %}
+                    ...
+                {% endif %}
+            </p>
+
+            <!-- Tutarsızlık ve Çelişki Uyarısı -->
+            {% if item.inconsistency_status == 1 %}
+                <div class="inconsistency-box" onclick="event.stopPropagation()">
+                    <div class="inconsistency-header">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>{{ t.inconsistency_found }}</span>
+                    </div>
+                    <p class="inconsistency-note">{{ item.inconsistency_note }}</p>
+                </div>
+            {% endif %}
+
+            <!-- Alt Bilgi ve Sınıflandırma Rozetleri -->
+            <div class="card-footer" onclick="event.stopPropagation()">
+                <div class="tags-cluster">
+                    {% if item.relevance_status %}
+                        <span class="badge badge-relevance" title="{{ item.llm_relevance_explanation }}">
+                            {% if 'Stage 1' in item.relevance_status %}
+                                {{ t.keyword_badge }}
+                            {% elif 'Stage 2' in item.relevance_status %}
+                                {{ t.llm_badge }}
+                            {% else %}
+                                {{ t.genel_badge }}
+                            {% endif %}
+                        </span>
+                    {% endif %}
+
+                    {% if item.relevance_aspect and item.relevance_aspect != 'Genel' %}
+                        <span class="badge badge-aspect">
+                            📌 {{ item.relevance_aspect }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <a href="{{ item.link }}" target="_blank" rel="noopener noreferrer" class="link-original">
+                    {{ t.original_link }}
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>

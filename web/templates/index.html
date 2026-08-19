@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t.title }} | {{ t.subtitle }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Üst Bayrak Şeridi -->
+    <div class="flag-stripe">
+        <div class="stripe blue"></div>
+        <div class="stripe red"></div>
+        <div class="stripe green"></div>
+    </div>
+
+    <!-- Ana Başlık ve Kontrol Paneli -->
+    <header class="app-header">
+        <div class="container header-content">
+            <div class="brand-box">
+                <div class="emblem-wrapper">
+                    <!-- Azerbaycan Ay-Yıldız Amblemi -->
+                    <svg class="az-emblem" viewBox="0 0 60 60" width="48" height="48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="30" cy="30" r="28" fill="#0092bc" stroke="#ffffff" stroke-width="2"/>
+                        <circle cx="30" cy="30" r="20" fill="#e4002b"/>
+                        <path d="M30 18 A12 12 0 1 0 30 42 A9.5 9.5 0 1 1 30 18 Z" fill="#ffffff"/>
+                        <polygon points="34,26 36,28 39,28 37,30 38,33 35,32 33,34 33,31 30,30 33,29 33,26 35,28" fill="#ffffff"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="title">{{ t.title }}</h1>
+                    <p class="subtitle">{{ t.subtitle }}</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <!-- Dil Seçici -->
+                <div class="language-selector-wrapper">
+                    <button class="lang-btn {% if lang == 'tr' %}active{% endif %}" onclick="setLanguage('tr')">TR</button>
+                    <button class="lang-btn {% if lang == 'az' %}active{% endif %}" onclick="setLanguage('az')">AZ</button>
+                </div>
+
+                <!-- Arama Kutusu ve Butonu -->
+                <div class="search-bar-wrapper">
+                    <div class="search-input-box">
+                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="newsSearchInput" class="search-input" placeholder="{{ t.search_placeholder }}" oninput="handleSearchInput(this.value)" onkeydown="if(event.key==='Enter') applySearch()">
+                        <button id="clearSearchBtn" class="clear-search-btn" onclick="clearSearch()" style="display: none;">✕</button>
+                    </div>
+                    <button class="btn btn-search" onclick="applySearch()">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <span>{{ t.search_btn }}</span>
+                    </button>
+                </div>
+
+                <!-- Tarih Seçici -->
+                <div class="date-selector-wrapper">
+                    <label for="dateSelect" class="date-label">{{ t.date_label }}</label>
+                    <select id="dateSelect" class="date-select" onchange="changeDate(this.value)">
+                        {% for dt in available_dates %}
+                            <option value="{{ dt }}" {% if dt == selected_date %}selected{% endif %}>
+                                {{ dt }} {% if dt == today_str and lang == 'tr' %}(Bugün){% elif dt == today_str and lang == 'az' %}(Bu gün){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Yenile Butonu -->
+                <button id="refreshBtn" class="btn btn-primary" onclick="triggerRefresh()">
+                    <svg id="refreshIcon" class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                    <span id="refreshBtnText">{{ t.refresh_btn }}</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Ana Panel: Sidebar + İçerik Akışı -->
+    <main class="container main-layout">
+        
+        <!-- Canlı Tarama Bannerı -->
+        <div id="statusBanner" class="status-banner {% if pipeline_status.is_running %}active{% endif %}">
+            <div class="spinner"></div>
+            <div>
+                <strong>{{ t.scanning_banner }}</strong>
+                <span class="status-sub">{{ t.scanning_banner_sub }}</span>
+            </div>
+        </div>
+
+        <!-- Görünüm Sekmeleri: Tüm Medya Akışı vs. Azerbaycan Gündemi -->
+        <div class="view-tabs-container">
+            <div class="view-tabs">
+                <button class="view-tab-btn active" id="tabAllMedia" onclick="switchViewTab('all')">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <path d="M16 8h2M16 12h2M16 16h2M6 8h6M6 12h6M6 16h6"/>
+                    </svg>
+                    <span>{{ t.tab_all_media }}</span>
+                    <span class="tab-count" id="allMediaCount">{{ total_displayed }}</span>
+                </button>
+                <button class="view-tab-btn" id="tabAzAgenda" onclick="switchViewTab('az')">
+                    <span class="az-flag-emoji">🇦🇿</span>
+                    <span>{{ t.tab_az_agenda }}</span>
+                    <span class="tab-count az-count" id="azAgendaCount">{{ az_gundemi_count }}</span>
+                </button>
+            </div>
+
+            <!-- Azerbaycan Gündemi Alt Kategori Filtre Butonları (Sadece Azerbaycan sekmesinde görünür) -->
+            <div class="az-subfilters-bar" id="azSubfiltersBar" style="display: none;">
+                <span class="subfilter-label">🏷️ {{ t.aspect_label }}</span>
+                <button class="az-filter-pill active" onclick="filterAzCategory('all', this)">{{ t.az_filter_all }}</button>
+                <button class="az-filter-pill" onclick="filterAzCategory('Ermenistan Hattı', this)">{{ t.az_filter_ermenistan }}</button>
+                <button class="az-filter-pill" onclick="filterAzCategory('Diplomasi & Siyaset', this)">{{ t.az_filter_diplomasi }}</button>
+                <button class="az-filter-pill" onclick="filterAzCategory('Türk Devletleri/Bölgesel', this)">{{ t.az_filter_turk_devletleri }}</button>
+                <button class="az-filter-pill" onclick="filterAzCategory('Enerji/Ekonomi', this)">{{ t.az_filter_enerji }}</button>
+                <button class="az-filter-pill" onclick="filterAzCategory('Güvenlik/Savunma', this)">{{ t.az_filter_guvenlik }}</button>
+            </div>
+        </div>
+
+        <!-- İki Bölümlü Düzen -->
+        <div class="dashboard-body">
+            
+            <!-- SOL BÖLÜM: Haber Kaynakları Menüsü (Sidebar) -->
+            <aside class="sources-sidebar">
+                <h2 class="sidebar-title">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <path d="M16 8h2M16 12h2M16 16h2M6 8h6M6 12h6M6 16h6"/>
+                    </svg>
+                    {{ t.sources_title }}
+                </h2>
+
+                <div class="sources-menu">
+                    <!-- Tüm Kaynaklar -->
+                    <button class="source-menu-item active" onclick="filterBySource('all', this)">
+                        <span class="source-name-text">{{ t.all_sources_sidebar }}</span>
+                        <span class="source-item-count" id="count-all">{{ news_items|length }}</span>
+                    </button>
+
+                    <div class="menu-divider"></div>
+
+                    <!-- 14 Haber Kaynağı -->
+                    {% for source in sources %}
+                        <button class="source-menu-item" onclick="filterBySource('{{ source.name }}', this)">
+                            <span class="source-indicator dot-{{ source.id }}"></span>
+                            <span class="source-name-text">{{ source.name }}</span>
+                            <span class="source-item-count" id="count-{{ source.id }}">{{ source_counts[source.name] }}</span>
+                        </button>
+                    {% endfor %}
+
+                    <div class="menu-divider"></div>
+
+                    <!-- Diğer Kaynaklar -->
+                    <button class="source-menu-item" onclick="filterByOtherSources(this)">
+                        <span class="source-indicator dot-other"></span>
+                        <span class="source-name-text">{{ t.other_sources }}</span>
+                        <span class="source-item-count" id="count-other">{{ other_count }}</span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- SAĞ BÖLÜM: Tek Sütun Haber Akışı -->
+            <section class="news-feed-column">
+                
+                <!-- Özet Şerit -->
+                <div class="summary-minibar">
+                    <div class="summary-mini-card">
+                        <span class="mini-card-val text-blue" id="visible-total">{{ total_displayed }}</span>
+                        <span class="mini-card-lbl">{{ t.displayed_total }}</span>
+                    </div>
+                    <div class="summary-mini-card">
+                        <span class="mini-card-val text-red">{{ summary.inconsistencies }}</span>
+                        <span class="mini-card-lbl">{{ t.inconsistencies }}</span>
+                    </div>
+                </div>
+
+                <!-- Kartlar Akışı -->
+                <div class="cards-stream">
+                    {% if news_items %}
+                        {% for item in news_items %}
+                            {% include 'news_card.html' %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">{{ t.empty_state }}</div>
+                    {% endif %}
+                </div>
+
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- Alt Bilgi -->
+    <footer class="app-footer">
+        <div class="container footer-content">
+            <div>
+                <span>{{ t.footer_embassy }}</span>
+                <span class="footer-dot">•</span>
+                <span>{{ t.footer_schedule }} <strong>{{ schedule_time }}</strong></span>
+                <span class="footer-dot">•</span>
+                <span>{{ t.footer_ai }} <strong>{{ llm_model }}</strong></span>
+            </div>
+            <div class="footer-right">
+                <span>{{ t.footer_sources }}</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
