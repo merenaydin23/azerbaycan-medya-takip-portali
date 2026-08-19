@@ -1,0 +1,119 @@
+import logging
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+import re
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+class BaseAdapter:
+    def __init__(self, source_id: str, source_name: str, category: str):
+        self.source_id = source_id
+        self.source_name = source_name
+        self.category = category
+        self.logger = logging.getLogger(f"Adapter.{source_id}")
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": "https://www.google.com/"
+        }
+
+    def fetch_url(self, url: str, timeout: int = 15) -> str:
+        try:
+            response = requests.get(url, headers=self.headers, timeout=timeout)
+            if response.status_code == 200:
+                response.encoding = response.apparent_encoding or "utf-8"
+                return response.text
+            else:
+                self.logger.warning(f"Failed to fetch {url}, status code: {response.status_code}")
+                return ""
+        except Exception as e:
+            self.logger.error(f"Error fetching {url}: {e}")
+            return ""
+
+    def clean_text(self, text: str) -> str:
+        if not text:
+            return ""
+        # Remove HTML tags if present
+        text = re.sub(r'<[^>]+>', ' ', text)
+        # Normalize whitespace
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
+    def parse_rss_feed(self, rss_url: str, max_items: int = 25) -> list:
+        items = []
+        xml_content = self.fetch_url(rss_url)
+        if not xml_content:
+            return items
+
+        try:
+            soup = BeautifulSoup(xml_content, "xml")
+            entries = soup.find_all("item") or soup.find_all("entry")
+            
+            for entry in entries[:max_items]:
+                title = ""
+                link = ""
+                summary = ""
+                pub_date = ""
+                author = ""
+
+                # Title
+                title_tag = entry.find("title")
+                if title_tag:
+                    title = self.clean_text(title_tag.get_text())
+
+                # Link
+                link_tag = entry.find("link")
+                if link_tag:
+                    link = link_tag.get_text() if link_tag.get_text() else link_tag.get("href", "")
+                    link = link.strip()
+
+                # Summary / Description
+                desc_tag = entry.find("description") or entry.find("summary") or entry.find("content:encoded")
+                if desc_tag:
+                    summary = self.clean_text(desc_tag.get_text())
+
+                # Author
+                author_tag = entry.find("author") or entry.find("dc:creator")
+                if author_tag:
+                    author = self.clean_text(author_tag.get_text())
+
+                # Pub Date
+                import email.utils
+                pub_date_tag = entry.find("pubDate") or entry.find("published") or entry.find("dc:date")
+                if pub_date_tag:
+                    raw_pub_date = self.clean_text(pub_date_tag.get_text())
+                    # Standardize format
+                    try:
+                        parsed_tuple = email.utils.parsedate_tz(raw_pub_date)
+                        if parsed_tuple:
+                            dt = datetime.fromtimestamp(email.utils.mktime_tz(parsed_tuple))
+                            pub_date = dt.strftime("%Y-%m-%d %H:%M:%S")
+                        else:
+                            pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                if title and link:
+                    items.append({
+                        "source_id": self.source_id,
+                        "source_name": self.source_name,
+                        "category": self.category,
+                        "title": title,
+                        "summary": summary,
+                        "author": author,
+                        "publish_date": pub_date,
+                        "link": link,
+                        "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+        except Exception as e:
+            self.logger.error(f"Error parsing RSS feed from {rss_url}: {e}")
+
+        return items
+
+    def fetch_latest_news(self) -> list:
+        """Subclasses should implement this method."""
+        raise NotImplementedError("Each adapter must implement fetch_latest_news()")

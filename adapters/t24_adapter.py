@@ -1,0 +1,55 @@
+from datetime import datetime
+from bs4 import BeautifulSoup
+from .base_adapter import BaseAdapter
+from config import CATEGORIES
+
+class T24Adapter(BaseAdapter):
+    def __init__(self):
+        super().__init__(
+            source_id="t24",
+            source_name="T24",
+            category=CATEGORIES["MUHALIF"]
+        )
+
+    def fetch_latest_news(self) -> list:
+        items = []
+        urls = ["https://t24.com.tr", "https://t24.com.tr/gundem", "https://t24.com.tr/dunya"]
+        seen_links = set()
+
+        for url in urls:
+            html = self.fetch_url(url)
+            if not html:
+                continue
+            soup = BeautifulSoup(html, "html.parser")
+            
+            # Find all article links
+            for a_tag in soup.find_all("a", href=True):
+                href = a_tag.get("href")
+                if not href:
+                    continue
+                if href.startswith("/"):
+                    href = "https://t24.com.tr" + href
+
+                if "/haber/" in href and href not in seen_links:
+                    seen_links.add(href)
+                    title = self.clean_text(a_tag.get_text())
+                    # Look for parent/sibling summary
+                    parent = a_tag.parent
+                    summary = ""
+                    p_tag = parent.find("p") if parent else None
+                    if p_tag:
+                        summary = self.clean_text(p_tag.get_text())
+
+                    if title and len(title) > 15 and not title.lower().startswith("t24"):
+                        items.append({
+                            "source_id": self.source_id,
+                            "source_name": self.source_name,
+                            "category": self.category,
+                            "title": title,
+                            "summary": summary,
+                            "author": "T24",
+                            "publish_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "link": href,
+                            "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        })
+        return items[:30]
