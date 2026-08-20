@@ -108,7 +108,7 @@ def save_news_item(item: dict) -> int:
                 ELSE COALESCE(NULLIF(excluded.summary, ''), news.summary)
             END,
             author=COALESCE(excluded.author, news.author),
-            publish_date=COALESCE(excluded.publish_date, news.publish_date),
+            publish_date=COALESCE(NULLIF(excluded.publish_date, ''), news.publish_date),
             relevance_status=COALESCE(excluded.relevance_status, news.relevance_status),
             llm_relevance_explanation=COALESCE(excluded.llm_relevance_explanation, news.llm_relevance_explanation),
             relevance_aspect=COALESCE(excluded.relevance_aspect, news.relevance_aspect),

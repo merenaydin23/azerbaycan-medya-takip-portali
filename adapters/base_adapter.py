@@ -41,6 +41,37 @@ class BaseAdapter:
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
 
+    def extract_date_from_card(self, card) -> str:
+        """Extracts publication date/time from HTML card elements or fallback to current date."""
+        if not card:
+            return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Check time/meta tags
+        time_tag = card.find("time") or card.find("span", class_=re.compile(r"date|time|saat|tarih", re.I))
+        if time_tag:
+            dt_attr = time_tag.get("datetime") or time_tag.get("content") or time_tag.get_text()
+            if dt_attr:
+                dt_str = self.clean_text(dt_attr)
+                m_time = re.search(r"\b([0-2]?\d[:.][0-5]\d)\b", dt_str)
+                if m_time:
+                    time_part = m_time.group(1).replace(".", ":")
+                    if len(time_part.split(":")[0]) == 1:
+                        time_part = "0" + time_part
+                    today = datetime.now().strftime("%Y-%m-%d")
+                    return f"{today} {time_part}:00"
+
+        # Search anywhere in card text for HH:MM time pattern
+        card_text = card.get_text()
+        m_time = re.search(r"\b([0-2]?\d[:.][0-5]\d)\b", card_text)
+        if m_time:
+            time_part = m_time.group(1).replace(".", ":")
+            if len(time_part.split(":")[0]) == 1:
+                time_part = "0" + time_part
+            today = datetime.now().strftime("%Y-%m-%d")
+            return f"{today} {time_part}:00"
+
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     def parse_rss_feed(self, rss_url: str, max_items: int = 100) -> list:
         items = []
         xml_content = self.fetch_url(rss_url)
