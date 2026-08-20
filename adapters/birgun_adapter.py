@@ -49,7 +49,7 @@ class BirgunAdapter(BaseAdapter):
                                 "title": title,
                                 "summary": summary,
                                 "author": "BirGün",
-                                "publish_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "publish_date": self.extract_date_from_card(parent),
                                 "link": href,
                                 "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             })

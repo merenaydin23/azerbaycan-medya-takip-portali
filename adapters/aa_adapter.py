@@ -67,7 +67,7 @@ class AAAdapter(BaseAdapter):
                         "title": title,
                         "summary": summary,
                         "author": "Anadolu Ajansı",
-                        "publish_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "publish_date": self.extract_date_from_card(art),
                         "link": link,
                         "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })

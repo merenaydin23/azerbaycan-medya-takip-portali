@@ -58,7 +58,7 @@ class IHAAdapter(BaseAdapter):
                             "title": title,
                             "summary": summary,
                             "author": "İHA",
-                            "publish_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "publish_date": self.extract_date_from_card(parent or a_tag),
                             "link": link,
                             "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         })
