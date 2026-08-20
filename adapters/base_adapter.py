@@ -70,7 +70,46 @@ class BaseAdapter:
             today = datetime.now().strftime("%Y-%m-%d")
             return f"{today} {time_part}:00"
 
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    def canonicalize_url(self, url: str) -> str:
+        if not url:
+            return ""
+        try:
+            import urllib.parse
+            parsed = urllib.parse.urlparse(url)
+            clean_query = []
+            if parsed.query:
+                for pair in parsed.query.split("&"):
+                    if "=" in pair:
+                        k, v = pair.split("=", 1)
+                        if not any(t in k.lower() for t in ("utm", "amp", "ref", "rss", "fbclid", "gclid")):
+                            clean_query.append(pair)
+            new_query = "&".join(clean_query)
+            path = parsed.path.rstrip("/")
+            clean_url = urllib.parse.urlunparse((parsed.scheme, parsed.netloc.lower(), path, parsed.params, new_query, ""))
+            return clean_url
+        except:
+            return url
+
+    def is_junk_title(self, title: str) -> bool:
+        if not title:
+            return True
+        title_clean = self.clean_text(title)
+        title_clean = re.sub(r'^\d{1,2}\s+[A-ZÇĞİÖŞÜa-zçğıöşü]+\s+\d{4}\s*\d{0,2}[:.]?\d{0,2}\s*[-–—]?\s*', '', title_clean)
+        title_clean = re.sub(r'^\d{1,2}[:.]\d{2}(:\d{2})?\s*[-–—]?\s*', '', title_clean).strip()
+        if len(title_clean) < 12:
+            return True
+        title_lower = title_clean.lower()
+        spam_kw = [
+            "sayısal loto", "süper loto", "on numara", "şans topu", "milli piyango",
+            "çekiliş sonuçları", "bilet sorgulama", "günlük burç", "burç yorumları",
+            "nöbetçi eczane", "çerez politikası", "gizlilik politikası", "künye",
+            "kurumsal satış", "bize ulaşın", "site haritası"
+        ]
+        if any(sk in title_lower for sk in spam_kw):
+            return True
+        if re.match(r'^(\d+\s+[A-Za-zÇĞİÖŞÜçğıöşü]+\s+\d{4}|\d+[\s.-]+\d+[\s.-]+\d+|\d{1,2}[:.]\d{2})+$', title.strip()):
+            return True
+        return False
 
     def parse_rss_feed(self, rss_url: str, max_items: int = 100) -> list:
         items = []
@@ -147,7 +186,7 @@ class BaseAdapter:
                 else:
                     pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                if title and link:
+                if title and link and not self.is_junk_title(title):
                     items.append({
                         "source_id": self.source_id,
                         "source_name": self.source_name,
@@ -156,7 +195,7 @@ class BaseAdapter:
                         "summary": summary,
                         "author": author,
                         "publish_date": pub_date,
-                        "link": link,
+                        "link": self.canonicalize_url(link),
                         "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     })
         except Exception as e:
