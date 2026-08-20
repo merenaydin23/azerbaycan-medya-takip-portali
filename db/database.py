@@ -5,13 +5,15 @@ from pathlib import Path
 from config import DB_PATH
 
 def get_connection():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), timeout=30.0)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA busy_timeout=5000;")
-    except sqlite3.OperationalError:
+        conn.execute("PRAGMA busy_timeout=10000;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA cache_size=-64000;")
+        conn.execute("PRAGMA temp_store=MEMORY;")
+    except:
         pass
     return conn
 
@@ -62,6 +64,9 @@ def init_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_ilgili_mi ON news(ilgili_mi)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_ilgi_kategorisi ON news(ilgi_kategorisi)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_group_id ON news(group_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_source_name ON news(source_name)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_link ON news(link)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_title ON news(title)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_date_rel ON news(publish_date, relevance_status)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_date_ilgili ON news(publish_date, ilgili_mi)")
     conn.commit()

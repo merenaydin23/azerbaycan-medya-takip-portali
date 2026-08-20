@@ -88,14 +88,14 @@ def run_media_monitoring_pipeline() -> dict:
         logger.info(f"Step 1 Complete: Fetched {len(raw_articles)} total articles (including SerpApi).")
 
         # Step 2: Filter by date range (today 00:00 and last 3 days) and save without duplicates
-        # Load existing articles to memory for fast deduplication
+        # Load ALL existing articles into memory for 100% zero-duplicate guarantee
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT link, title FROM news WHERE publish_date >= date('now', '-3 days')")
+        cursor.execute("SELECT link, title FROM news")
         db_rows = cursor.fetchall()
         conn.close()
         
-        existing_links = {row["link"] for row in db_rows}
+        existing_links = {row["link"] for row in db_rows if row["link"]}
         existing_titles = {"".join(ch for ch in row["title"].lower() if ch.isalnum()) for row in db_rows if row["title"]}
 
         import email.utils
