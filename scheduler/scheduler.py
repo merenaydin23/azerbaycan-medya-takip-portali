@@ -24,7 +24,20 @@ _pipeline_status = {
     "last_count": 0,
     "last_error": None
 }
-_last_general_serp_run = None
+_global_existing_links = None
+_global_existing_titles = None
+
+def _get_global_dedup_sets():
+    global _global_existing_links, _global_existing_titles
+    if _global_existing_links is None or _global_existing_titles is None:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT link, title FROM news")
+        db_rows = cursor.fetchall()
+        conn.close()
+        _global_existing_links = {row["link"] for row in db_rows if row["link"]}
+        _global_existing_titles = {"".join(ch for ch in row["title"].lower() if ch.isalnum()) for row in db_rows if row["title"]}
+    return _global_existing_links, _global_existing_titles
 
 def get_pipeline_status() -> dict:
     return _pipeline_status
@@ -87,16 +100,8 @@ def run_media_monitoring_pipeline() -> dict:
 
         logger.info(f"Step 1 Complete: Fetched {len(raw_articles)} total articles (including SerpApi).")
 
-        # Step 2: Filter by date range (today 00:00 and last 3 days) and save without duplicates
-        # Load ALL existing articles into memory for 100% zero-duplicate guarantee
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT link, title FROM news")
-        db_rows = cursor.fetchall()
-        conn.close()
-        
-        existing_links = {row["link"] for row in db_rows if row["link"]}
-        existing_titles = {"".join(ch for ch in row["title"].lower() if ch.isalnum()) for row in db_rows if row["title"]}
+        # Step 2: Instant RAM deduplication
+        existing_links, existing_titles = _get_global_dedup_sets()
 
         import email.utils
         def parse_publish_date(date_str: str) -> datetime:

@@ -11,8 +11,10 @@ def get_connection():
         conn.execute("PRAGMA journal_mode=WAL;")
         conn.execute("PRAGMA busy_timeout=10000;")
         conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("PRAGMA cache_size=-64000;")
+        conn.execute("PRAGMA cache_size=-128000;")
+        conn.execute("PRAGMA mmap_size=268435456;")
         conn.execute("PRAGMA temp_store=MEMORY;")
+        conn.execute("PRAGMA threads=4;")
     except:
         pass
     return conn

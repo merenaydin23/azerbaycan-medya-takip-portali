@@ -198,9 +198,8 @@ def create_app():
         
         t = TRANSLATIONS[lang]
 
-        # Get news for selected date and sort chronologically (newest first)
+        # Get news for selected date (SQL returns items pre-sorted by publish_date DESC at RAM speed)
         all_news = get_news_by_date(selected_date, only_relevant=only_relevant)
-        all_news.sort(key=lambda n: str(n.get("publish_date") or ""), reverse=True)
 
         # Calculate counts per source
         raw_source_counts = {}
