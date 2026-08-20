@@ -2,61 +2,22 @@
 
 let isPolling = false;
 
-// Expand/Collapse Accordion Card & Auto Summarize
-async function toggleCardExpansion(card) {
-    if (event.target.closest('a') || event.target.closest('.badge') || event.target.closest('.inconsistency-box')) {
+// Haber kartını aç / kapat
+function toggleCardExpansion(card) {
+    if (event.target.closest('a') || event.target.closest('.badge')) {
         return;
     }
 
-    const itemId = card.id.replace('card-', '');
     const details = card.querySelector('.card-details');
     const inner = card.querySelector('.card-details-inner');
 
     if (card.classList.contains('expanded')) {
         card.classList.remove('expanded');
         details.style.maxHeight = '0px';
-    } else {
-        card.classList.add('expanded');
-        details.style.maxHeight = (inner.scrollHeight + 32) + 'px';
-
-        // Automatically trigger AI summary if it's not summarized yet
-        if (card.getAttribute('data-ai-summarized') === 'false') {
-            await autoGenerateAiSummary(itemId, card);
-        }
-    }
-}
-
-async function autoGenerateAiSummary(itemId, card) {
-    const isAz = document.documentElement.lang === 'az';
-    const summaryText = document.getElementById(`summary-text-${itemId}`);
-    if (!summaryText) return;
-
-    // Show clean loading animation inside the card summary
-    summaryText.innerHTML = `<span class="ai-loader-text">${isAz ? '⏳ Süni intellekt xülasəsi hazırlanır...' : '⏳ Yapay zeka özeti hazırlanıyor...'}</span>`;
-    
-    // Adjust accordion height for loading message
-    const details = card.querySelector('.card-details');
-    const inner = card.querySelector('.card-details-inner');
-    details.style.maxHeight = (inner.scrollHeight + 32) + 'px';
-
-    try {
-        const response = await fetch(`/api/summarize-article/${itemId}`, {
-            method: 'POST'
-        });
-        
-        const data = await response.json();
-        if (data.status === 'success') {
-            summaryText.innerText = data.summary;
-            card.setAttribute('data-ai-summarized', 'true');
-        } else {
-            summaryText.innerText = isAz ? '❌ Xülasə hazırlana bilmədi.' : '❌ Özet oluşturulamadı.';
-        }
-    } catch (e) {
-        console.error(e);
-        summaryText.innerText = isAz ? '❌ Bağlantı xətası baş verdi.' : '❌ Bağlantı hatası oluştu.';
+        return;
     }
 
-    // Recalculate height after content loads
+    card.classList.add('expanded');
     details.style.maxHeight = (inner.scrollHeight + 32) + 'px';
 }
 
@@ -178,27 +139,56 @@ function filterByOtherSources(clickedElement) {
     applyFiltersAndPagination();
 }
 
+let currentTimeSort = 'desc'; // 'desc' = newest first, 'asc' = oldest first
+
+function toggleTimeSort(order) {
+    currentTimeSort = order;
+    const btnDesc = document.getElementById('sortDescBtn');
+    const btnAsc = document.getElementById('sortAscBtn');
+    if (btnDesc) btnDesc.classList.toggle('active', order === 'desc');
+    if (btnAsc) btnAsc.classList.toggle('active', order === 'asc');
+    
+    sortCardsInDOM();
+    applyFiltersAndPagination();
+}
+
+function sortCardsInDOM() {
+    const cardsStream = document.querySelector('.cards-stream');
+    if (!cardsStream) return;
+
+    const cards = Array.from(cardsStream.querySelectorAll('.news-card'));
+    if (cards.length === 0) return;
+
+    cards.sort((a, b) => {
+        const dateA = a.getAttribute('data-date') || '';
+        const dateB = b.getAttribute('data-date') || '';
+        if (currentTimeSort === 'desc') {
+            return dateB.localeCompare(dateA);
+        } else {
+            return dateA.localeCompare(dateB);
+        }
+    });
+
+    cards.forEach(card => {
+        cardsStream.appendChild(card);
+    });
+}
+
 function applyFiltersAndPagination() {
     const cardsStream = document.querySelector('.cards-stream');
     if (!cardsStream) return;
 
     const cards = cardsStream.querySelectorAll('.news-card');
     let matchingCount = 0;
-    let visibleCount = 0;
 
     cards.forEach(card => {
         const cardSource = card.getAttribute('data-source') || '';
         const cardCategory = card.getAttribute('data-category') || '';
         const isIlgili = card.getAttribute('data-ilgili') === 'true';
         const ilgiKategorisi = card.getAttribute('data-ilgi-kategorisi') || '';
-        
         const titleEl = card.querySelector('.card-title');
-        const summaryEl = card.querySelector('.card-summary');
-        
         const cardTitle = titleEl ? titleEl.innerText.toLowerCase() : '';
-        const cardSummary = summaryEl ? summaryEl.innerText.toLowerCase() : '';
-        
-        // 1. Tab & Category Filter
+
         let matchesTab = true;
         if (activeViewTab === 'az') {
             if (!isIlgili) {
@@ -211,34 +201,30 @@ function applyFiltersAndPagination() {
             }
         }
 
-        // 2. Sidebar Source Filter
         let matchesSource = false;
         if (activeSourceFilter === 'all') {
             matchesSource = true;
         } else if (activeSourceFilter === 'other') {
-            matchesSource = (cardCategory === 'Diğer / Sınıflandırılmamış');
+            matchesSource = (card.getAttribute('data-is-other') === 'true') ||
+                (cardCategory === 'Diğer / Sınıflandırılmamış');
         } else {
             matchesSource = (cardSource === activeSourceFilter);
         }
 
         let matchesFilter = matchesTab && matchesSource;
-
-        // 3. Keyword / Title Search Query Matching
         if (matchesFilter && currentSearchQuery) {
-            const matchesQuery = cardTitle.includes(currentSearchQuery) || 
-                                 cardSummary.includes(currentSearchQuery) || 
-                                 cardSource.toLowerCase().includes(currentSearchQuery) ||
-                                 ilgiKategorisi.toLowerCase().includes(currentSearchQuery);
-            if (!matchesQuery) {
-                matchesFilter = false;
-            }
+            const ok = cardTitle.includes(currentSearchQuery) ||
+                cardSource.toLowerCase().includes(currentSearchQuery) ||
+                ilgiKategorisi.toLowerCase().includes(currentSearchQuery);
+            if (!ok) matchesFilter = false;
         }
 
         if (matchesFilter) {
             matchingCount++;
-            if (matchingCount <= displayLimit) {
+            const showCard = (matchingCount <= displayLimit);
+
+            if (showCard) {
                 card.style.display = 'flex';
-                visibleCount++;
             } else {
                 card.style.display = 'none';
             }
@@ -247,17 +233,14 @@ function applyFiltersAndPagination() {
         }
     });
 
-    // Update main counter
     const visibleTotal = document.getElementById('visible-total');
-    if (visibleTotal) {
-        visibleTotal.innerText = matchingCount;
-    }
+    if (visibleTotal) visibleTotal.innerText = matchingCount;
 
-    // Toggle Load More button
+    const hasMore = (matchingCount > displayLimit);
     const container = document.querySelector('.news-feed-column');
     let loadMoreBtn = container.querySelector('.load-more-btn');
-    
-    if (matchingCount > displayLimit) {
+
+    if (hasMore) {
         if (!loadMoreBtn) {
             loadMoreBtn = document.createElement('button');
             loadMoreBtn.className = 'load-more-btn';
@@ -343,6 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
         startStatusPolling();
     }
 
-    // Initialize pagination limits
+    // Initialize pagination limits and time sorting
+    sortCardsInDOM();
     applyFiltersAndPagination();
 });

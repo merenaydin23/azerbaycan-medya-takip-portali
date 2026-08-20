@@ -16,9 +16,6 @@
     --text-subtle: #94a3b8;
 
     /* Vurgular */
-    --inconsistency-bg: #fff1f2;
-    --inconsistency-border: #f87171;
-    --inconsistency-text: #991b1b;
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
@@ -566,6 +563,9 @@ body {
 .dot-t24 { background-color: #4b5563; }
 .dot-birgun { background-color: #14b8a6; }
 .dot-other { background-color: #6b7280; }
+.dot-resmi { background-color: #0284c7; }
+.dot-iktidar { background-color: #f97316; }
+.dot-muhalif { background-color: #dc2626; }
 
 .source-item-count {
     margin-left: auto;
@@ -619,6 +619,51 @@ body {
     font-size: 12.5px;
     font-weight: 600;
     color: var(--text-muted);
+}
+
+/* Zaman Sıralama Şeridi */
+.sort-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    background: #ffffff;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.sort-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-right: 4px;
+}
+
+.sort-pill {
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sort-pill:hover {
+    border-color: var(--az-blue);
+    color: var(--az-blue);
+    background: #ffffff;
+}
+
+.sort-pill.active {
+    background: var(--az-blue);
+    border-color: var(--az-blue);
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 146, 188, 0.2);
 }
 
 /* Canlı Tarama Durum Bannerı */
@@ -680,6 +725,46 @@ body {
 
 /* Kart Akışı */
 .cards-stream {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Kaynak bölümü (Sözcü, Akşam vb. alt alta) */
+.source-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.source-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 2px 8px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.source-section-title {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+}
+
+.source-section-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: 4px 10px;
+}
+
+.source-section-cards {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -784,10 +869,27 @@ body {
     border-top: 1px dashed #e2e8f0;
 }
 
-.card-summary {
-    font-size: 13.5px;
-    color: #334155;
-    line-height: 1.55;
+.az-brief-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.az-brief-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--az-blue);
+}
+
+.az-brief-text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #1e293b;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 /* Genişletilmiş Kart Durumu */
@@ -801,41 +903,6 @@ body {
 .news-card.expanded .chevron-icon {
     transform: rotate(180deg);
     color: var(--az-blue);
-}
-
-/* Tutarsızlık / Çelişki Kutusu */
-.news-card.inconsistent-card {
-    border-left: 4px solid var(--az-red);
-}
-
-.news-card.inconsistent-card.expanded {
-    border-color: var(--inconsistency-border);
-    border-left: 4px solid var(--az-red);
-}
-
-.inconsistency-box {
-    background: var(--inconsistency-bg);
-    border: 1px solid var(--inconsistency-border);
-    border-left: 3px solid var(--az-red);
-    border-radius: 6px;
-    padding: 8px 10px;
-}
-
-.inconsistency-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--inconsistency-text);
-    font-size: 11px;
-    font-weight: 700;
-    margin-bottom: 2px;
-}
-
-.inconsistency-note {
-    font-size: 12px;
-    color: var(--inconsistency-text);
-    line-height: 1.35;
-    font-weight: 500;
 }
 
 /* Kart Alt Rozetler */
@@ -946,19 +1013,6 @@ body {
 .footer-dot {
     margin: 0 8px;
     color: var(--text-subtle);
-}
-
-/* Yapay Zeka Özetleme Yükleniyor Metni */
-.ai-loader-text {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--az-blue);
-    animation: pulse 1.5s infinite ease-in-out;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
 }
 
 /* Crawl Source Indicators */

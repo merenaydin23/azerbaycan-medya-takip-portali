@@ -93,7 +93,13 @@ def save_news_item(item: dict) -> int:
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(link) DO UPDATE SET
             title=excluded.title,
-            summary=COALESCE(excluded.summary, news.summary),
+            summary=CASE
+                WHEN news.ilgili_mi = 1
+                     AND length(ifnull(news.summary, '')) >= 60
+                     AND substr(trim(news.summary), -3) != '...'
+                THEN news.summary
+                ELSE COALESCE(NULLIF(excluded.summary, ''), news.summary)
+            END,
             author=COALESCE(excluded.author, news.author),
             publish_date=COALESCE(excluded.publish_date, news.publish_date),
             relevance_status=COALESCE(excluded.relevance_status, news.relevance_status),
@@ -216,44 +222,11 @@ def update_llm_analysis(news_id: int, relevance_status: str, explanation: str, a
     conn.commit()
     conn.close()
 
-def update_inconsistency(news_id: int, status: int, note: str, group_id: str = None):
-    conn = get_connection()
-    cursor = conn.cursor()
-    if group_id:
-        cursor.execute("""
-        UPDATE news SET
-            inconsistency_status = ?,
-            inconsistency_note = ?,
-            group_id = ?
-        WHERE id = ?
-        """, (status, note, group_id, news_id))
-    else:
-        cursor.execute("""
-        UPDATE news SET
-            inconsistency_status = ?,
-            inconsistency_note = ?
-        WHERE id = ?
-        """, (status, note, news_id))
-    conn.commit()
-    conn.close()
-
-def get_all_news_for_grouping(date_str: str) -> list:
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-    SELECT id, source_name, category, title, summary, link, relevance_aspect
-    FROM news
-    WHERE (publish_date LIKE ? OR scraped_at LIKE ?)
-    """, (f"{date_str}%", f"{date_str}%"))
-    rows = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    return rows
-
 def get_daily_summary(date_str: str) -> dict:
     news_items = get_news_by_date(date_str, only_relevant=False)
     summary = {
         "total": len(news_items),
-        "inconsistencies": sum(1 for n in news_items if n.get("inconsistency_status") == 1),
+        "az_related": sum(1 for n in news_items if n.get("ilgili_mi") in (1, True, "1")),
         "by_category": {
             "Resmi / Ana Akım": sum(1 for n in news_items if n.get("category") == "Resmi / Ana Akım"),
             "İktidar Yanlısı": sum(1 for n in news_items if n.get("category") == "İktidar Yanlısı"),

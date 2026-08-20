@@ -2,14 +2,13 @@ import os
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from config import BASE_DIR, PORT, HOST, DEBUG, CATEGORIES, LLM_MODEL, SCHEDULE_TIME, SOURCES_CONFIG
-from db import init_db, get_news_by_date, get_available_dates, get_daily_summary, update_news_summary, get_connection
+from db import init_db, get_news_by_date, get_available_dates, get_daily_summary
 from scheduler import start_background_scheduler, trigger_manual_refresh, get_pipeline_status
-from classifier import generate_qwen_summary
 
 TRANSLATIONS = {
     "tr": {
         "title": "Azerbaycan Büyükelçiliği",
-        "subtitle": "Türkiye Basını Canlı Medya Takip ve Tutarsızlık Analiz Portalı",
+        "subtitle": "Türkiye Basını Canlı Medya Takip Portalı",
         "all_news": "Tüm Haberler (Filtresiz)",
         "az_oriented": "🇦🇿 Azerbaycan Odaklı",
         "date_label": "Tarih:",
@@ -22,7 +21,6 @@ TRANSLATIONS = {
         "resmi": "Resmi / Ana Akım",
         "iktidar": "İktidar Yanlısı",
         "muhalif": "Muhalif Basın",
-        "inconsistencies": "Tutarsızlık / Fark İşareti",
         "disclaimer_title": "Filtre Durumu:",
         "disclaimer_all": "Şu anda tüm haberler filtresiz olarak listelenmektedir. Yalnızca Azerbaycan ile ilgili haberleri görmek için üstteki '🇦🇿 Azerbaycan Odaklı' butonuna basabilirsiniz.",
         "disclaimer_az": "Şu anda sadece Azerbaycan ile doğrudan veya dolaylı ilgili haberler gösterilmektedir.",
@@ -31,7 +29,6 @@ TRANSLATIONS = {
         "footer_schedule": "Otomatik Tarama:",
         "footer_ai": "Yapay Zeka:",
         "footer_sources": "Geniş Kapsamlı Canlı Medya Takibi",
-        "inconsistency_found": "TUTARSIZLIK / ÇELİŞKİ TESPİT EDİLDİ",
         "original_link": "Orijinali Gör",
         "keyword_badge": "🔍 Anahtar Kelime",
         "llm_badge": "🤖 Yapay Zeka (Qwen)",
@@ -40,8 +37,6 @@ TRANSLATIONS = {
         "all_sources": "Hepsi",
         "sources_title": "Haber Kaynakları",
         "all_sources_sidebar": "Tüm Kaynaklar",
-        "generate_ai_summary": "✨ Yapay Zeka Özeti Oluştur",
-        "generating_ai_summary": "⏳ Özetleniyor...",
         "other_sources": "Diğer Kaynaklar",
         "search_placeholder": "Haber başlığı veya anahtar kelime ara...",
         "search_btn": "Ara",
@@ -53,11 +48,15 @@ TRANSLATIONS = {
         "az_filter_turk_devletleri": "Türk Devletleri / Bölgesel",
         "az_filter_enerji": "Enerji / Ekonomi",
         "az_filter_guvenlik": "Güvenlik / Savunma",
-        "az_empty_state": "Bu kategoride Azerbaycan ile ilgili haber bulunamadı."
+        "az_empty_state": "Bu kategoride Azerbaycan ile ilgili haber bulunamadı.",
+        "az_brief_label": "İçerik özeti",
+        "sort_label": "Zaman Sıralaması:",
+        "sort_newest": "🕒 En Yeni İlk",
+        "sort_oldest": "🕒 En Eski İlk"
     },
     "az": {
         "title": "Azərbaycan Səfirliyi",
-        "subtitle": "Türkiyə Mətbuatı Canlı Media Təqib və Ziddiyyət Təhlili Portalı",
+        "subtitle": "Türkiyə Mətbuatı Canlı Media Təqib Portalı",
         "all_news": "Bütün Xəbərlər (Filtrsiz)",
         "az_oriented": "🇦🇿 Azərbaycan Yönümlü",
         "date_label": "Tarix:",
@@ -70,7 +69,6 @@ TRANSLATIONS = {
         "resmi": "Rəsmi / Əsas Medya",
         "iktidar": "İqtidaryönlü Medya",
         "muhalif": "Müxalif Mətbuat",
-        "inconsistencies": "Ziddiyyət / Fərq İşarəsi",
         "disclaimer_title": "Filtr Statusu:",
         "disclaimer_all": "Hazırda bütün xəbərlər filtrsiz olaraq siyahıya alınır. Yalnız Azərbaycanla bağlı xəbərləri görmək üçün yuxarıdakı '🇦🇿 Azərbaycan Yönümlü' düyməsinə basa bilərsiniz.",
         "disclaimer_az": "Hazırda yalnız Azərbaycanla birbaşa və ya dolayısı ilə bağlı xəbərlər göstərilir.",
@@ -79,7 +77,6 @@ TRANSLATIONS = {
         "footer_schedule": "Avtomatik Tarama:",
         "footer_ai": "Süni İntellekt:",
         "footer_sources": "Geniş Əhatəli Canlı Media Təqibi",
-        "inconsistency_found": "ZİDDİYYƏT / FƏRQ TƏSPİT EDİLDİ",
         "original_link": "Orijinalı Gör",
         "keyword_badge": "🔍 Açar Söz",
         "llm_badge": "🤖 Süni İntellekt (Qwen)",
@@ -88,8 +85,6 @@ TRANSLATIONS = {
         "all_sources": "Hamısı",
         "sources_title": "Xəbər Mənbələri",
         "all_sources_sidebar": "Bütün Mənbələr",
-        "generate_ai_summary": "✨ Süni İntellekt Xülasəsi Yarat",
-        "generating_ai_summary": "⏳ Xülasə edilir...",
         "other_sources": "Digər Mənbələr",
         "search_placeholder": "Xəbər başlığı və ya açar söz axtar...",
         "search_btn": "Axtar",
@@ -101,9 +96,78 @@ TRANSLATIONS = {
         "az_filter_turk_devletleri": "Türk Dövlətləri / Regional",
         "az_filter_enerji": "Enerji / İqtisadiyyat",
         "az_filter_guvenlik": "Təhlükəsizlik / Müdafiə",
-        "az_empty_state": "Bu kateqoriyada Azərbaycanla bağlı xəbər tapılmadı."
+        "az_empty_state": "Bu kateqoriyada Azərbaycanla bağlı xəbər tapılmadı.",
+        "az_brief_label": "Məzmun xülasəsi",
+        "sort_label": "Zaman Sıralaması:",
+        "sort_newest": "🕒 Ən Yeni İlkin",
+        "sort_oldest": "🕒 Ən Köhnə İlkin"
     }
 }
+
+MEDIA_OUTLET_CATEGORIES = {
+    # Resmi / Ana Akım
+    "anadolu ajansı (aa)": "Resmi / Ana Akım",
+    "aa": "Resmi / Ana Akım",
+    "trt haber": "Resmi / Ana Akım",
+    "ihlas haber ajansı (iha)": "Resmi / Ana Akım",
+    "i̇hlas haber ajansı (i̇ha)": "Resmi / Ana Akım",
+    "iha": "Resmi / Ana Akım",
+    "dha | demirören haber ajansı": "Resmi / Ana Akım",
+    "dha": "Resmi / Ana Akım",
+    "milliyet": "Resmi / Ana Akım",
+    "hürriyet": "Resmi / Ana Akım",
+    "ntv haber": "Resmi / Ana Akım",
+    "ntv": "Resmi / Ana Akım",
+    "habertürk": "Resmi / Ana Akım",
+    "cnn türk": "Resmi / Ana Akım",
+    "cnnturk.com": "Resmi / Ana Akım",
+    "bloomberght": "Resmi / Ana Akım",
+    "ekonomim": "Resmi / Ana Akım",
+
+    # İktidar Yanlısı
+    "a haber": "İktidar Yanlısı",
+    "ahaber": "İktidar Yanlısı",
+    "yeni şafak": "İktidar Yanlısı",
+    "yenisafak.com": "İktidar Yanlısı",
+    "sabah": "İktidar Yanlısı",
+    "türkiye gazetesi": "İktidar Yanlısı",
+    "akşam": "İktidar Yanlısı",
+    "aksam.com.tr": "İktidar Yanlısı",
+    "star - haberler": "İktidar Yanlısı",
+    "star": "İktidar Yanlısı",
+    "ülke tv": "İktidar Yanlısı",
+    "diriliş postası": "İktidar Yanlısı",
+    "türkgün": "İktidar Yanlısı",
+    "superhaber": "İktidar Yanlısı",
+
+    # Muhalif
+    "sözcü": "Muhalif",
+    "sozcu.com.tr": "Muhalif",
+    "cumhuriyet": "Muhalif",
+    "halk tv": "Muhalif",
+    "t24": "Muhalif",
+    "t24.com.tr": "Muhalif",
+    "birgün": "Muhalif",
+    "birgun.net": "Muhalif",
+    "gazete duvar": "Muhalif",
+    "odatv": "Muhalif",
+    "karar": "Muhalif",
+    "aydınlık": "Muhalif",
+    "yeniçağ": "Muhalif",
+    "evrensel": "Muhalif",
+    "anka": "Muhalif",
+}
+
+def resolve_source_category(source_name: str, current_cat: str = None) -> str:
+    clean = (source_name or "").lower().strip()
+    if clean in MEDIA_OUTLET_CATEGORIES:
+        return MEDIA_OUTLET_CATEGORIES[clean]
+    for k, v in MEDIA_OUTLET_CATEGORIES.items():
+        if k in clean or clean in k:
+            return v
+    if current_cat and current_cat != CATEGORIES["OTHER"]:
+        return current_cat
+    return CATEGORIES["OTHER"]
 
 def create_app():
     app = Flask(
@@ -134,24 +198,109 @@ def create_app():
         
         t = TRANSLATIONS[lang]
 
-        # Get news for selected date
+        # Get news for selected date and sort chronologically (newest first)
         all_news = get_news_by_date(selected_date, only_relevant=only_relevant)
-        
-        # Calculate counts per source and other sources
-        source_counts = {}
-        for s in SOURCES_CONFIG:
-            source_counts[s["name"]] = 0
-            
+        all_news.sort(key=lambda n: str(n.get("publish_date") or n.get("scraped_at") or ""), reverse=True)
+
+        # Calculate counts per source
+        raw_source_counts = {}
+        for n in all_news:
+            s_name = n.get("source_name", "Bilinmeyen")
+            raw_source_counts[s_name] = raw_source_counts.get(s_name, 0) + 1
+
+        # 1. Main 14 News Platforms (Always separate)
+        main_sources = []
+        core_names = set()
+        for src in SOURCES_CONFIG:
+            s_name = src["name"]
+            core_names.add(s_name.lower())
+            count = raw_source_counts.get(s_name, 0)
+            main_sources.append({
+                "id": src["id"],
+                "name": s_name,
+                "category": src["category"],
+                "count": count
+            })
+
+        # 2. Extra / External platforms
+        # If external source has >= 5 news -> separate button
+        # If external source has < 5 news -> grouped into "Diğer Kaynaklar"
+        extra_sources = []
+        extra_source_names = set()
         other_count = 0
         az_gundemi_count = 0
-        for n in all_news:
-            if n.get("category") == CATEGORIES["OTHER"]:
-                other_count += 1
+
+        for s_name, count in sorted(raw_source_counts.items(), key=lambda x: x[1], reverse=True):
+            if s_name.lower() in core_names:
+                continue
+            
+            if count >= 5:
+                s_id = "".join(ch for ch in s_name.lower() if ch.isalnum())[:12]
+                s_cat = resolve_source_category(s_name, None)
+                extra_sources.append({
+                    "id": s_id,
+                    "name": s_name,
+                    "category": s_cat,
+                    "count": count
+                })
+                extra_source_names.add(s_name)
             else:
-                source_counts[n["source_name"]] = source_counts.get(n["source_name"], 0) + 1
+                other_count += count
+
+        # Sidebar + feed: most articles first
+        sidebar_sources = sorted(
+            [s for s in (main_sources + extra_sources) if s["count"] > 0],
+            key=lambda s: s["count"],
+            reverse=True
+        )
+        main_sources = sorted(main_sources, key=lambda s: s["count"], reverse=True)
+        extra_sources = sorted(extra_sources, key=lambda s: s["count"], reverse=True)
+
+        # Tag each news item
+        for n in all_news:
+            s_name = n.get("source_name", "Bilinmeyen")
+            is_core = s_name.lower() in core_names
+            is_extra = s_name in extra_source_names
+            
+            # If not a recognized prominent channel (< 5 news) -> mark as other source
+            n["is_other_source"] = (not is_core and not is_extra)
+            n["category"] = resolve_source_category(s_name, n.get("category"))
             
             if n.get("ilgili_mi") in (1, True, "1"):
                 az_gundemi_count += 1
+
+        # Group news by source — order by article count (highest first)
+        items_by_source = {}
+        other_items = []
+        for n in all_news:
+            if n.get("is_other_source"):
+                other_items.append(n)
+                continue
+            s_name = n.get("source_name", "Bilinmeyen")
+            items_by_source.setdefault(s_name, []).append(n)
+
+        news_groups = []
+        for src in sidebar_sources:
+            articles = items_by_source.get(src["name"], [])
+            if not articles:
+                continue
+            news_groups.append({
+                "id": src["id"],
+                "name": src["name"],
+                "category": src["category"],
+                "is_other": False,
+                "articles": articles,
+            })
+        if other_items:
+            news_groups.append({
+                "id": "other",
+                "name": t["other_sources"],
+                "category": CATEGORIES["OTHER"],
+                "is_other": True,
+                "articles": other_items,
+            })
+
+        named_total = len(all_news)
 
         summary = get_daily_summary(selected_date)
         available_dates = get_available_dates()
@@ -167,11 +316,13 @@ def create_app():
             available_dates=available_dates,
             filter_mode=filter_mode,
             news_items=all_news,
-            sources=SOURCES_CONFIG,
-            source_counts=source_counts,
+            news_groups=news_groups,
+            main_sources=main_sources,
+            extra_sources=extra_sources,
+            sidebar_sources=sidebar_sources,
             other_count=other_count,
             az_gundemi_count=az_gundemi_count,
-            total_displayed=len(all_news),
+            total_displayed=named_total,
             summary=summary,
             pipeline_status=pipeline_status,
             llm_model=LLM_MODEL,
@@ -197,34 +348,6 @@ def create_app():
     def daily_summary_api():
         date_str = request.args.get("date", datetime.now().strftime("%Y-%m-%d"))
         return jsonify(get_daily_summary(date_str))
-
-    @app.route("/api/summarize-article/<int:item_id>", methods=["POST"])
-    def summarize_article(item_id):
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, title, summary, link FROM news WHERE id = ?", (item_id,))
-        row = cursor.fetchone()
-        conn.close()
-        
-        if not row:
-            return jsonify({"status": "error", "message": "Haber bulunamadı."}), 404
-            
-        title = row["title"]
-        summary = row["summary"]
-        
-        # Fallback to title if summary is placeholder/empty
-        content_to_summarize = summary
-        if not summary or len(summary.strip()) < 10 or summary == "..." or summary == "` and `":
-            content_to_summarize = title
-        
-        # Call Qwen
-        qwen_summary = generate_qwen_summary(title, content_to_summarize)
-        
-        if qwen_summary:
-            update_news_summary(item_id, qwen_summary)
-            return jsonify({"status": "success", "summary": qwen_summary})
-        else:
-            return jsonify({"status": "error", "message": "Yapay zeka özeti oluşturulamadı."})
 
     return app
 

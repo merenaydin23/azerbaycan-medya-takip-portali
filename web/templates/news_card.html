@@ -1,17 +1,17 @@
-<div class="news-card {% if item.inconsistency_status == 1 %}inconsistent-card{% endif %} {% if item.ilgili_mi == 1 %}az-relevant-card{% endif %}" 
+<div class="news-card {% if item.ilgili_mi == 1 %}az-relevant-card{% endif %}" 
      id="card-{{ item.id }}" 
      data-source="{{ item.source_name }}" 
      data-category="{{ item.category }}"
+     data-is-other="{% if item.is_other_source %}true{% else %}false{% endif %}"
      data-ilgili="{% if item.ilgili_mi == 1 %}true{% else %}false{% endif %}"
      data-ilgi-kategorisi="{{ item.ilgi_kategorisi or 'İlgisiz' }}"
-     data-ai-summarized="{% if item.summary and item.summary|length > 20 and not item.summary == '...' and not item.summary == '` and `' %}true{% else %}false{% endif %}"
+     data-date="{{ item.publish_date }}"
      onclick="toggleCardExpansion(this)">
     
     <!-- Kart Başlığı (Her Zaman Görünür) -->
     <div class="card-header-main">
         <div class="card-meta">
             <span class="source-tag">{{ item.source_name }}</span>
-            <span class="crawl-source-tag badge-{{ (item.veri_kaynagi or 'Scraping').lower() }}">{{ item.veri_kaynagi or 'Scraping' }}</span>
             {% if item.author %}
                 <span class="author-tag">• {{ item.author }}</span>
             {% endif %}
@@ -49,28 +49,14 @@
     <!-- Genişleyen Detay Alanı -->
     <div class="card-details">
         <div class="card-details-inner">
-            <!-- Özet -->
-            <p class="card-summary" id="summary-text-{{ item.id }}">
-                {% if item.summary and item.summary|length > 20 and not item.summary == '...' and not item.summary == '` and `' %}
-                    {{ item.summary }}
-                {% else %}
-                    ...
-                {% endif %}
-            </p>
-
-            <!-- Tutarsızlık ve Çelişki Uyarısı -->
-            {% if item.inconsistency_status == 1 %}
-                <div class="inconsistency-box" onclick="event.stopPropagation()">
-                    <div class="inconsistency-header">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                            <line x1="12" y1="9" x2="12" y2="13"></line>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        <span>{{ t.inconsistency_found }}</span>
-                    </div>
-                    <p class="inconsistency-note">{{ item.inconsistency_note }}</p>
+            {% if item.ilgili_mi == 1 %}
+                {% set az_brief = (item.summary or '')|trim %}
+                {% if az_brief|length > 60 and az_brief[-3:] != '...' and az_brief[-1:] != '…' %}
+                <div class="az-brief-box">
+                    <span class="az-brief-label">{{ t.az_brief_label }}</span>
+                    <p class="az-brief-text">{{ az_brief }}</p>
                 </div>
+                {% endif %}
             {% endif %}
 
             <!-- Alt Bilgi ve Sınıflandırma Rozetleri -->

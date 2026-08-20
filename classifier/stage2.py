@@ -43,7 +43,7 @@ def extract_json_object(text: str) -> str:
 
 def call_llm(messages: list, temperature: float = 0.2, max_tokens: int = 800) -> str:
     """
-    Calls the custom Qwen endpoint via OpenAI compatible chat/completions API.
+    Calls the LLM endpoint via OpenAI compatible chat/completions API.
     """
     if not LLM_API_KEY:
         logger.warning("LLM_API_KEY is not set. Skipping LLM request.")
@@ -61,17 +61,23 @@ def call_llm(messages: list, temperature: float = 0.2, max_tokens: int = 800) ->
         "max_tokens": max_tokens
     }
 
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=90, verify=False)
-        if response.status_code == 200:
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
-        else:
-            logger.error(f"LLM API returned status {response.status_code}: {response.text}")
+    for attempt in range(2):
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=30, verify=False)
+            if response.status_code == 200:
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            elif response.status_code == 429:
+                logger.warning(f"LLM rate limit (429) hit. Waiting 10s before retry (attempt {attempt+1}/2)...")
+                import time
+                time.sleep(10)
+            else:
+                logger.error(f"LLM API returned status {response.status_code}: {response.text}")
+                return ""
+        except Exception as e:
+            logger.error(f"Error connecting to LLM API ({url}): {e}")
             return ""
-    except Exception as e:
-        logger.error(f"Error connecting to LLM API ({url}): {e}")
-        return ""
+    return ""
 
 from .azerbaijan_relevance_prompt import AZERBAIJAN_RELEVANCE_SYSTEM_PROMPT, build_relevance_user_prompt
 
@@ -141,30 +147,42 @@ def check_stage2_llm_relevance(title: str, summary: str, source_name: str = "Bil
             "explanation": ""
         }
 
-def generate_qwen_summary(title: str, text: str) -> str:
-    """
-    Generates a concise 2-sentence summary of the news article using Qwen LLM.
-    """
-    prompt = f"""Haber Başlığı: {title}
-Haber Metni: {text}
 
-Görev: Bu haber için en fazla 2 cümlelik, net, tarafsız ve profesyonel bir Türkçe özet yaz.
-Doğrudan özeti <summary>...</summary> etiketleri içerisine yaz. Başka hiçbir şey yazma."""
+def generate_az_agenda_brief(title: str, text: str, ilgi_kategorisi: str = "") -> str:
+    """
+    Azerbaycan Gündemi haberleri için genel, anlaşılır 2-3 cümlelik içerik özeti.
+    """
+    kategori = ilgi_kategorisi or "Azerbaycan Gündemi"
+    prompt = f"""Haber Başlığı: {title}
+Haber Metni: {text or title}
+İlgi Açısı: {kategori}
+
+Görev: Bu Azerbaycan gündemi haberinin içeriğini genel ve net şekilde anlat.
+Kurallar:
+- Tam 2 veya 3 cümle yaz.
+- Tarafsız, resmi ve anlaşılır ol (büyükelçilik brifing dili).
+- Konuyu özetle: ne oldu, kimler/nerede, neden önemli (Azerbaycan boyutu).
+- Başlık, madde, emoji veya giriş cümlesi kullanma.
+Doğrudan özeti <summary>...</summary> etiketleri içine yaz. Başka hiçbir şey yazma."""
 
     messages = [
-        {"role": "system", "content": "Sen hızlı haber özetleyen bir asistansın. Yalnızca <summary> ve </summary> etiketleri arasına en fazla 2 cümlelik Türkçe özet yazarsın."},
-        {"role": "user", "content": prompt}
+        {
+            "role": "system",
+            "content": (
+                "Sen Azerbaycan gündemi için kurumsal brifing özeti yazarsın. "
+                "Yalnızca <summary> ve </summary> arasına 2 veya 3 net Türkçe cümle koyarsın."
+            ),
+        },
+        {"role": "user", "content": prompt},
     ]
-    response_text = call_llm(messages, temperature=0.2, max_tokens=1500)
-    if response_text:
-        # Try to extract content between <summary> tags
-        match = re.search(r'<summary>(.*?)</summary>', response_text, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-            
-        # Fallback if tags not found
-        response_text = re.sub(r'(?i)<thinking>.*?</thinking>', '', response_text, flags=re.DOTALL)
-        response_text = re.sub(r'(?i)^thinking\s*process:.*?\n', '', response_text)
-        response_text = re.sub(r'^(Özet:|Özetçe:|Xülasə:)\s*', '', response_text.strip(), flags=re.IGNORECASE)
-        return response_text.strip()
-    return ""
+    response_text = call_llm(messages, temperature=0.2, max_tokens=800)
+    if not response_text:
+        return ""
+
+    match = re.search(r"<summary>(.*?)</summary>", response_text, re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+
+    response_text = re.sub(r"(?i)<thinking>.*?</thinking>", "", response_text, flags=re.DOTALL)
+    response_text = re.sub(r"^(Özet:|Özetçe:|Xülasə:)\s*", "", response_text.strip(), flags=re.IGNORECASE)
+    return response_text.strip()

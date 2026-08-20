@@ -6,14 +6,13 @@ import schedule
 
 from concurrent.futures import ThreadPoolExecutor
 from config import SCHEDULE_TIME, SOURCES_CONFIG, CATEGORIES, SERPAPI_KEY
-from db import init_db, save_news_item, get_all_news_for_grouping, get_connection, update_news_summary, clean_leading_time, update_news_relevance_classification
+from db import init_db, save_news_item, get_connection, clean_leading_time, update_news_relevance_classification, update_news_summary
 from adapters.runner import run_all_adapters
 from adapters.serpapi_adapter import SerpApiAdapter
 from classifier import (
     check_stage1_relevance,
     check_stage2_llm_relevance,
-    run_cross_comparison_for_articles,
-    generate_qwen_summary
+    generate_az_agenda_brief,
 )
 
 logger = logging.getLogger("MediaPipeline")
@@ -147,10 +146,10 @@ def run_media_monitoring_pipeline() -> dict:
 
             summary = item.get("summary", "")
 
-            # Run Stage 1 keyword filter for candidate screening
+            # Stage 1: kelime sınırlı anahtar eşleşme
             s1_result = check_stage1_relevance(title, summary)
             is_candidate = s1_result.get("is_relevant", False)
-            
+
             if is_candidate:
                 item["ilgili_mi"] = 1
                 item["ilgi_kategorisi"] = s1_result.get("aspect") or "Doğrudan"
@@ -159,6 +158,30 @@ def run_media_monitoring_pipeline() -> dict:
                 item["relevance_status"] = s1_result["stage"]
                 item["relevance_aspect"] = item["ilgi_kategorisi"]
                 item["llm_relevance_explanation"] = item["gerekce"]
+            elif s1_result.get("is_candidate_for_stage2"):
+                # Zayıf kelime / bağlam adayı → Gemini/Qwen ile doğrula
+                s2 = check_stage2_llm_relevance(
+                    title,
+                    summary,
+                    source_name=item.get("source_name", ""),
+                    category=item.get("category", "Genel"),
+                )
+                if s2.get("is_relevant") or s2.get("ilgili_mi"):
+                    item["ilgili_mi"] = 1
+                    item["ilgi_kategorisi"] = s2.get("ilgi_kategorisi") or s2.get("aspect") or "Doğrudan"
+                    item["guven_skoru"] = float(s2.get("guven_skoru") or 0.7)
+                    item["gerekce"] = s2.get("gerekce") or s2.get("explanation") or ""
+                    item["relevance_status"] = "Stage 2 (LLM)"
+                    item["relevance_aspect"] = item["ilgi_kategorisi"]
+                    item["llm_relevance_explanation"] = item["gerekce"]
+                else:
+                    item["ilgili_mi"] = 0
+                    item["ilgi_kategorisi"] = "İlgisiz"
+                    item["guven_skoru"] = 0.0
+                    item["gerekce"] = ""
+                    item["relevance_status"] = "Genel (Filtresiz)"
+                    item["relevance_aspect"] = "Genel"
+                    item["llm_relevance_explanation"] = ""
             else:
                 item["ilgili_mi"] = 0
                 item["ilgi_kategorisi"] = "İlgisiz"
@@ -174,17 +197,22 @@ def run_media_monitoring_pipeline() -> dict:
 
         logger.info(f"Step 2 Complete: Saved and categorized {len(relevant_articles_saved)} new articles.")
 
-        # Step 3: Cross Comparison & Inconsistency Detection
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        all_today_relevant = get_all_news_for_grouping(today_str)
-        if all_today_relevant:
-            run_cross_comparison_for_articles(all_today_relevant)
-        logger.info("Step 3 Complete: Cross comparison analysis finished.")
+        az_for_brief = [a for a in relevant_articles_saved if a.get("ilgili_mi") in (1, True, "1")]
+
+        # Step 3: Azerbaycan gündemi içerik özetleri (arka plan)
+        def run_background_ai_tasks():
+            try:
+                summarize_azerbaijan_agenda(az_for_brief)
+                backfill_azerbaijan_briefs()
+            except Exception as e:
+                logger.error(f"Error summarizing Azerbaijan agenda briefs: {e}")
+
+        threading.Thread(target=run_background_ai_tasks, daemon=True, name="BackgroundAITasks").start()
 
         duration = (datetime.now() - start_time).total_seconds()
         _pipeline_status["last_run"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         _pipeline_status["last_count"] = len(relevant_articles_saved)
-        logger.info(f"=== Pipeline Completed in {duration:.1f}s. Relevant articles saved: {len(relevant_articles_saved)} ===")
+        logger.info(f"=== Pipeline Completed in {duration:.1f}s. Relevant articles saved: {len(relevant_articles_saved)} (AI tasks running in background) ===")
 
         return {
             "status": "success",
@@ -201,47 +229,70 @@ def run_media_monitoring_pipeline() -> dict:
         _pipeline_status["is_running"] = False
         _is_running_lock.release()
 
-def summarize_missing_history():
-    """Finds all news items from 2026-08-16 onwards that lack a valid Qwen summary,
-    and summarizes them in the background to pre-populate the database.
-    """
-    logger.info("Background job started: Summarizing existing articles in database...")
-    
+
+def _needs_az_brief(summary: str) -> bool:
+    s = (summary or "").strip()
+    if len(s) < 60:
+        return True
+    if s in ("...", "` and `"):
+        return True
+    if s.endswith("...") or s.endswith("…"):
+        return True
+    return False
+
+
+def summarize_azerbaijan_agenda(articles: list):
+    """Yalnızca Azerbaycan Gündemi haberleri için genel içerik açıklama özeti üretir."""
+    if not articles:
+        return
+
+    logger.info(f"Generating content briefs for {len(articles)} Azerbaijan agenda articles...")
+    for item in articles:
+        try:
+            news_id = item.get("id")
+            if not news_id:
+                continue
+            title = item.get("title") or ""
+            raw = item.get("summary") or ""
+            content = title if _needs_az_brief(raw) else raw
+            brief = generate_az_agenda_brief(
+                title,
+                content,
+                item.get("ilgi_kategorisi") or "",
+            )
+            if brief:
+                update_news_summary(news_id, brief)
+                item["summary"] = brief
+                logger.info(f"AZ brief saved for article ID {news_id}")
+            time.sleep(3)
+        except Exception as e:
+            logger.error(f"Error creating AZ brief for {item.get('id')}: {e}")
+            time.sleep(3)
+    logger.info("Azerbaijan agenda briefing complete.")
+
+
+def backfill_azerbaijan_briefs():
+    """Eksik özeti olan mevcut Azerbaycan gündemi haberlerini tamamlar."""
     conn = get_connection()
     cursor = conn.cursor()
-    # Find articles that need a summary (where summary is empty, None, '...', or similar placeholders)
     cursor.execute("""
-        SELECT id, title, summary FROM news 
-        WHERE publish_date >= '2026-08-16' 
-          AND (summary IS NULL OR summary = '' OR summary = '...' OR summary = '` and `')
+        SELECT id, title, summary, ilgi_kategorisi FROM news
+        WHERE ilgili_mi = 1
+          AND (
+            summary IS NULL OR summary = '' OR summary = '...' OR summary = '` and `'
+            OR summary LIKE '%...'
+            OR length(summary) < 60
+          )
+        ORDER BY publish_date DESC
+        LIMIT 40
     """)
     rows = [dict(row) for row in cursor.fetchall()]
     conn.close()
-    
     if not rows:
-        logger.info("No historical articles need summarization.")
         return
+    logger.info(f"Backfilling {len(rows)} existing Azerbaijan agenda briefs...")
+    summarize_azerbaijan_agenda(rows)
 
-    logger.info(f"Found {len(rows)} historical articles needing Qwen summaries. Processing in parallel...")
-
-    def process_row(row):
-        try:
-            title = row["title"]
-            summary = row["summary"]
-            content_to_summarize = summary
-            if not summary or len(summary.strip()) < 10 or summary == "..." or summary == "` and `":
-                content_to_summarize = title
-                
-            q_sum = generate_qwen_summary(title, content_to_summarize)
-            if q_sum:
-                update_news_summary(row["id"], q_sum)
-        except Exception as e:
-            logger.error(f"Error summarizing historical article {row['id']}: {e}")
-
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        list(executor.map(process_row, rows))
-
-    logger.info("Background historical summarization complete.")
 
 def trigger_manual_refresh():
     """Triggers manual pipeline execution in background thread."""
@@ -261,12 +312,9 @@ def _scheduler_loop():
         time.sleep(30)
 
 def start_background_scheduler():
-    """Starts the daily 07:30 cron scheduler and historical summarizer on daemon threads."""
+    """Starts the daily cron scheduler. Keep python run.py running for scans to continue."""
     scheduler_thread = threading.Thread(target=_scheduler_loop, daemon=True, name="MediaSchedulerThread")
     scheduler_thread.start()
-    
-    # Run the historical summarizer in a separate background thread
-    history_thread = threading.Thread(target=summarize_missing_history, daemon=True, name="HistoricalSummarizerThread")
-    history_thread.start()
-    
+    # Mevcut AZ gündemi haberleri için özetleri arka planda tamamla
+    threading.Thread(target=backfill_azerbaijan_briefs, daemon=True, name="AZBriefBackfill").start()
     return scheduler_thread

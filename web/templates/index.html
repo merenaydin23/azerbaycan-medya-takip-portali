@@ -145,24 +145,24 @@
                     <!-- Tüm Kaynaklar -->
                     <button class="source-menu-item active" onclick="filterBySource('all', this)">
                         <span class="source-name-text">{{ t.all_sources_sidebar }}</span>
-                        <span class="source-item-count" id="count-all">{{ news_items|length }}</span>
+                        <span class="source-item-count" id="count-all">{{ total_displayed }}</span>
                     </button>
 
                     <div class="menu-divider"></div>
 
-                    <!-- 14 Haber Kaynağı -->
-                    {% for source in sources %}
-                        <button class="source-menu-item" onclick="filterBySource('{{ source.name }}', this)">
-                            <span class="source-indicator dot-{{ source.id }}"></span>
+                    <!-- Kaynaklar: en çok haberden aza -->
+                    {% for source in sidebar_sources %}
+                        <button class="source-menu-item" onclick="filterBySource('{{ source.name }}', this)" title="{{ source.category }}">
+                            <span class="source-indicator dot-{{ source.id }} {% if 'İktidar' in source.category %}dot-iktidar{% elif 'Muhalif' in source.category %}dot-muhalif{% else %}dot-resmi{% endif %}"></span>
                             <span class="source-name-text">{{ source.name }}</span>
-                            <span class="source-item-count" id="count-{{ source.id }}">{{ source_counts[source.name] }}</span>
+                            <span class="source-item-count" id="count-{{ source.id }}">{{ source.count }}</span>
                         </button>
                     {% endfor %}
 
                     <div class="menu-divider"></div>
 
-                    <!-- Diğer Kaynaklar -->
-                    <button class="source-menu-item" onclick="filterByOtherSources(this)">
+                    <!-- Diğer Kaynaklar (Sadece 5'ten az haber çeken yerler) -->
+                    <button class="source-menu-item" onclick="filterByOtherSources(this)" title="5 haberden az çeken tüm kaynaklar">
                         <span class="source-indicator dot-other"></span>
                         <span class="source-name-text">{{ t.other_sources }}</span>
                         <span class="source-item-count" id="count-other">{{ other_count }}</span>
@@ -180,13 +180,20 @@
                         <span class="mini-card-lbl">{{ t.displayed_total }}</span>
                     </div>
                     <div class="summary-mini-card">
-                        <span class="mini-card-val text-red">{{ summary.inconsistencies }}</span>
-                        <span class="mini-card-lbl">{{ t.inconsistencies }}</span>
+                        <span class="mini-card-val text-blue" id="az-agenda-total">{{ az_gundemi_count }}</span>
+                        <span class="mini-card-lbl">{{ t.az_related_total }}</span>
                     </div>
                 </div>
 
-                <!-- Kartlar Akışı -->
-                <div class="cards-stream">
+                <!-- Zaman Sıralama Şeridi -->
+                <div class="sort-bar">
+                    <span class="sort-label">{{ t.sort_label }}</span>
+                    <button class="sort-pill active" id="sortDescBtn" onclick="toggleTimeSort('desc')">{{ t.sort_newest }}</button>
+                    <button class="sort-pill" id="sortAscBtn" onclick="toggleTimeSort('asc')">{{ t.sort_oldest }}</button>
+                </div>
+
+                <!-- Kartlar Akışı: Zaman Sırasına Göre Tek Akış -->
+                <div class="cards-stream" id="cardsStream">
                     {% if news_items %}
                         {% for item in news_items %}
                             {% include 'news_card.html' %}

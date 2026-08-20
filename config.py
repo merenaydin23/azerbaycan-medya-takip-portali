@@ -45,10 +45,12 @@ KEYWORDS_STAGE_1 = [
     # Kurum, İttifak ve Projeler
     "türk devletleri teşkilatı", "tdt", "türk konseyi",
     "zangezur", "zengezur", "zangezur koridoru", "zengezur koridoru",
-    "tanap", "tap", "trans anadolu", "şahdeniz", "şah deniz", "socar", "petkim",
+    "tanap", "trans anadolu", "şahdeniz", "şah deniz", "socar", "petkim",
     "güney kafkasya", "kafkasya barış", "3+3 formatı",
     "bakü-tiflis-ceyhan", "btc boru hattı", "bakü-tiflis-kars", "btk demiryolu",
-    "bir millet iki devlet", "can azerbaycan"
+    "bir millet iki devlet", "can azerbaycan",
+    # Kısa kodlar — Stage1 kelime sınırlı; tek başlarına zayıf sayılır
+    "tap", "tdt", "btc",
 ]
 
 # Stage 2: Relevant Context Topics (for fallback to LLM classification)
