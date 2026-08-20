@@ -26,6 +26,7 @@ _pipeline_status = {
 }
 _global_existing_links = None
 _global_existing_titles = None
+_last_general_serp_run = None
 
 def _get_global_dedup_sets():
     global _global_existing_links, _global_existing_titles
