@@ -6,8 +6,13 @@ from config import DB_PATH
 
 def get_connection():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=30.0)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=5000;")
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 def init_db():
@@ -57,6 +62,8 @@ def init_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_ilgili_mi ON news(ilgili_mi)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_ilgi_kategorisi ON news(ilgi_kategorisi)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_group_id ON news(group_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_date_rel ON news(publish_date, relevance_status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_date_ilgili ON news(publish_date, ilgili_mi)")
     conn.commit()
     conn.close()
 
@@ -181,14 +188,24 @@ def update_news_summary(news_id: int, summary: str):
 def get_news_by_date(date_str: str, only_relevant: bool = True) -> list:
     conn = get_connection()
     cursor = conn.cursor()
-    query = "SELECT * FROM news WHERE publish_date LIKE ? OR scraped_at LIKE ?"
-    params = [f"{date_str}%", f"{date_str}%"]
+    start_dt = f"{date_str} 00:00:00"
+    end_dt = f"{date_str} 23:59:59"
     
     if only_relevant:
-        query += " AND (relevance_status LIKE 'Stage 1%' OR relevance_status LIKE 'Stage 2%' OR relevance_status = 'İlgili')"
-    
-    query += " ORDER BY publish_date DESC, id DESC"
-    cursor.execute(query, params)
+        query = """
+        SELECT * FROM news 
+        WHERE publish_date >= ? AND publish_date <= ?
+          AND (relevance_status LIKE 'Stage 1%' OR relevance_status LIKE 'Stage 2%' OR relevance_status = 'İlgili' OR ilgili_mi = 1)
+        ORDER BY publish_date DESC, id DESC
+        """
+    else:
+        query = """
+        SELECT * FROM news 
+        WHERE publish_date >= ? AND publish_date <= ?
+        ORDER BY publish_date DESC, id DESC
+        """
+
+    cursor.execute(query, (start_dt, end_dt))
     rows = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return rows
@@ -197,13 +214,11 @@ def get_available_dates() -> list:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT DISTINCT dt FROM (
-        SELECT SUBSTR(publish_date, 1, 10) as dt FROM news WHERE publish_date >= '2026-08-16'
-        UNION
-        SELECT SUBSTR(scraped_at, 1, 10) as dt FROM news WHERE scraped_at >= '2026-08-16'
-    )
-    WHERE dt >= '2026-08-16'
-    ORDER BY dt DESC
+        SELECT DISTINCT SUBSTR(publish_date, 1, 10) as dt 
+        FROM news 
+        WHERE publish_date IS NOT NULL AND publish_date != ''
+        ORDER BY dt DESC
+        LIMIT 30
     """)
     rows = cursor.fetchall()
     conn.close()
@@ -223,14 +238,30 @@ def update_llm_analysis(news_id: int, relevance_status: str, explanation: str, a
     conn.close()
 
 def get_daily_summary(date_str: str) -> dict:
-    news_items = get_news_by_date(date_str, only_relevant=False)
-    summary = {
-        "total": len(news_items),
-        "az_related": sum(1 for n in news_items if n.get("ilgili_mi") in (1, True, "1")),
+    conn = get_connection()
+    cursor = conn.cursor()
+    start_dt = f"{date_str} 00:00:00"
+    end_dt = f"{date_str} 23:59:59"
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN ilgili_mi = 1 THEN 1 ELSE 0 END) as az_related,
+            SUM(CASE WHEN category = 'Resmi / Ana Akım' THEN 1 ELSE 0 END) as resmi,
+            SUM(CASE WHEN category = 'İktidar Yanlısı' THEN 1 ELSE 0 END) as iktidar,
+            SUM(CASE WHEN category = 'Muhalif' THEN 1 ELSE 0 END) as muhalif
+        FROM news
+        WHERE publish_date >= ? AND publish_date <= ?
+    """, (start_dt, end_dt))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return {"total": 0, "az_related": 0, "by_category": {"Resmi / Ana Akım": 0, "İktidar Yanlısı": 0, "Muhalif": 0}}
+    return {
+        "total": row["total"] or 0,
+        "az_related": row["az_related"] or 0,
         "by_category": {
-            "Resmi / Ana Akım": sum(1 for n in news_items if n.get("category") == "Resmi / Ana Akım"),
-            "İktidar Yanlısı": sum(1 for n in news_items if n.get("category") == "İktidar Yanlısı"),
-            "Muhalif": sum(1 for n in news_items if n.get("category") == "Muhalif")
+            "Resmi / Ana Akım": row["resmi"] or 0,
+            "İktidar Yanlısı": row["iktidar"] or 0,
+            "Muhalif": row["muhalif"] or 0
         }
     }
-    return summary

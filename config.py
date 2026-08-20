@@ -27,28 +27,33 @@ DB_PATH = BASE_DIR / "db" / "media_monitor.db"
 # Schedule Configuration
 SCHEDULE_TIME = os.getenv("SCHEDULE_TIME", "07:30")
 
-# Stage 1: Extended Keywords List (Case-insensitive matching)
+# Stage 1: Extended Keywords List (Case-insensitive matching with word boundaries)
 KEYWORDS_STAGE_1 = [
-    # Ülke ve Şehir İsimleri
-    "azerbaycan", "azerbaycan'ın", "azerbaycan'a", "azerbaycan'da", "azerbaycanlı", "azerbaycanlılar",
-    "bakü", "bakü'de", "bakü'ye", "bakü'nün",
-    "nahçıvan", "nahçivan", "nahcivan", "nahçıvan'a", "nahçıvan'da",
+    # Ülke, Şehir ve Bölge İsimleri
+    "azerbaycan", "azerbaycan'ın", "azerbaycan'a", "azerbaycan'da", "azerbaycan'dan", "azerbaycanlı", "azerbaycanlılar",
+    "bakü", "bakü'de", "bakü'ye", "bakü'nün", "bakü'den",
+    "nahçıvan", "nahçivan", "nahcivan", "nahçıvan'a", "nahçıvan'da", "naxçıvan",
     "karabağ", "dağlık karabağ", "karabağ'da", "karabağ'ın", "karabağ'a",
     "şuşa", "şuşa'da", "şuşa'ya", "şuşa beyannamesi",
     "hankendi", "hocalı", "kelbecer", "laçın", "ağdam", "cebrayıl", "fuzuli", "zengilan", "gubadlı",
+    "gence", "gəncə", "terter", "barda", "lenkeran", "mingeçevir", "şemkir",
+    "zengilan havalimanı", "fuzuli havalimanı", "laçın koridoru",
 
     # Kişi ve Lider İsimleri
     "ilham aliyev", "aliyev", "aliyev'in", "aliyev'den", "mehriban aliyeva",
-    "haydar aliyev", "heydar aliyev",
+    "haydar aliyev", "heydar aliyev", "ceyhun bayramov", "zakir hasanov", "reşad memmedov",
     "paşinyan", "ermenistan-azerbaycan", "azerbaycan-ermenistan",
 
-    # Kurum, İttifak ve Projeler
-    "türk devletleri teşkilatı", "tdt", "türk konseyi",
+    # Kurum, İttifak ve Diplomatik Projeler
+    "türk devletleri teşkilatı", "tdt", "türk konseyi", "türksoy", "turkpa",
     "zangezur", "zengezur", "zangezur koridoru", "zengezur koridoru",
     "tanap", "trans anadolu", "şahdeniz", "şah deniz", "socar", "petkim",
     "güney kafkasya", "kafkasya barış", "3+3 formatı",
     "bakü-tiflis-ceyhan", "btc boru hattı", "bakü-tiflis-kars", "btk demiryolu",
     "bir millet iki devlet", "can azerbaycan",
+    "azerbaycan büyükelçiliği", "azerbaycan konsolosluğu", "azerbaycan başkonsolosluğu", "kars başkonsolosluğu",
+    "azerbaycan dışişleri", "azerbaycan savunma bakanlığı", "azerbaycan milli meclisi", "azerbaycan ordusu",
+
     # Kısa kodlar — Stage1 kelime sınırlı; tek başlarına zayıf sayılır
     "tap", "tdt", "btc",
 ]
@@ -73,6 +78,9 @@ SOURCES_CONFIG = [
     {"id": "aa", "name": "Anadolu Ajansı (AA)", "category": CATEGORIES["RESMI"], "type": "scrape", "domain": "aa.com.tr"},
     {"id": "trt", "name": "TRT Haber", "category": CATEGORIES["RESMI"], "type": "rss/scrape", "domain": "trthaber.com"},
     {"id": "iha", "name": "İhlas Haber Ajansı (İHA)", "category": CATEGORIES["RESMI"], "type": "scrape", "domain": "iha.com.tr"},
+    {"id": "dha", "name": "DHA | Demirören Haber Ajansı", "category": CATEGORIES["RESMI"], "type": "rss/scrape", "domain": "dha.com.tr"},
+    {"id": "ntv", "name": "NTV Haber", "category": CATEGORIES["RESMI"], "type": "rss/scrape", "domain": "ntv.com.tr"},
+    {"id": "haberturk", "name": "Habertürk", "category": CATEGORIES["RESMI"], "type": "rss/scrape", "domain": "haberturk.com"},
     {"id": "milliyet", "name": "Milliyet", "category": CATEGORIES["RESMI"], "type": "rss", "domain": "milliyet.com.tr"},
     {"id": "hurriyet", "name": "Hürriyet", "category": CATEGORIES["RESMI"], "type": "rss/scrape", "domain": "hurriyet.com.tr"},
 

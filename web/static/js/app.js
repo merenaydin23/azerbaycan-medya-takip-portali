@@ -44,7 +44,7 @@ let activeSourceFilter = 'all';
 let activeViewTab = 'all'; // 'all' or 'az'
 let activeAzSubcategory = 'all';
 let currentSearchQuery = '';
-let displayLimit = 25;
+let displayLimit = 50;
 
 function switchViewTab(tab) {
     activeViewTab = tab;

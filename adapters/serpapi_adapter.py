@@ -42,7 +42,7 @@ class SerpApiAdapter:
 
         try:
             logger.info(f"Querying SerpApi for source '{source_name}' ({domain})...")
-            response = requests.get(self.url, params=params, timeout=15)
+            response = requests.get(self.url, params=params, timeout=6)
             self._log_usage(1)
 
             if response.status_code != 200:
@@ -57,7 +57,7 @@ class SerpApiAdapter:
             return []
 
     def fetch_general_news(self) -> list:
-        """Runs multiple wider search queries to catch articles across all Turkish media, national newspapers, and regional outlets."""
+        """Runs multiple wider search queries concurrently to catch articles across all Turkish media."""
         if not self.api_key:
             logger.warning("SERPAPI_KEY is not set. Skipping SerpApi search.")
             return []
@@ -82,7 +82,9 @@ class SerpApiAdapter:
         ]
 
         all_results = []
-        for q in search_queries:
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _fetch_query(q):
             params = {
                 "engine": "google_news",
                 "q": q,
@@ -90,22 +92,22 @@ class SerpApiAdapter:
                 "gl": "tr",
                 "hl": "tr"
             }
-
             try:
-                logger.info(f"Querying SerpApi Google News for '{q}'...")
-                response = requests.get(self.url, params=params, timeout=15)
+                response = requests.get(self.url, params=params, timeout=6)
                 self._log_usage(1)
-
                 if response.status_code == 200:
                     data = response.json()
                     results = data.get("news_results", [])
-                    parsed = self._parse_results(results, None, None)
-                    all_results.extend(parsed)
-                else:
-                    logger.error(f"SerpApi returned status code {response.status_code} for query '{q}': {response.text}")
+                    return self._parse_results(results, None, None)
             except Exception as e:
                 logger.error(f"Error querying SerpApi for query '{q}': {e}")
-                
+            return []
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            res_lists = executor.map(_fetch_query, search_queries)
+            for res in res_lists:
+                all_results.extend(res)
+
         return all_results
 
     def _parse_results(self, news_results: list, default_source_name: str = None, default_category: str = None) -> list:

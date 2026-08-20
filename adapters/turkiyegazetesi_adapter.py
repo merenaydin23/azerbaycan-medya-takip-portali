@@ -13,8 +13,8 @@ class TurkiyeGazetesiAdapter(BaseAdapter):
 
     def fetch_latest_news(self) -> list:
         rss_urls = [
-            "https://www.turkiyegazetesi.com.tr/rss/rss.xml",
-            "http://www.turkiyegazetesi.com.tr/rss/rss.xml"
+            "https://news.google.com/rss/search?q=site:turkiyegazetesi.com.tr&hl=tr&gl=TR&ceid=TR:tr",
+            "https://www.turkiyegazetesi.com.tr/rss/gundem.xml"
         ]
         items = []
         for url in rss_urls:

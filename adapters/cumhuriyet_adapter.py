@@ -13,9 +13,8 @@ class CumhuriyetAdapter(BaseAdapter):
 
     def fetch_latest_news(self) -> list:
         rss_urls = [
-            "https://www.cumhuriyet.com.tr/rss/son_dakika.xml",
-            "https://www.cumhuriyet.com.tr/rss/dunya.xml",
-            "https://www.cumhuriyet.com.tr/rss/turkiye.xml"
+            "https://news.google.com/rss/search?q=site:cumhuriyet.com.tr&hl=tr&gl=TR&ceid=TR:tr",
+            "https://www.cumhuriyet.com.tr/rss/son_dakika.xml"
         ]
         items = []
         for url in rss_urls:

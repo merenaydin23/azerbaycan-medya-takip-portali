@@ -12,14 +12,16 @@ class IHAAdapter(BaseAdapter):
         )
 
     def fetch_latest_news(self) -> list:
-        urls = [
-            "https://www.iha.com.tr",
-            "https://www.iha.com.tr/gundem",
-            "https://www.iha.com.tr/dunya",
-            "https://www.iha.com.tr/politika"
+        rss_urls = [
+            "https://news.google.com/rss/search?q=site:iha.com.tr&hl=tr&gl=TR&ceid=TR:tr"
         ]
         items = []
-        seen_links = set()
+        for url in rss_urls:
+            rss_items = self.parse_rss_feed(url, max_items=40)
+            items.extend(rss_items)
+
+        if items:
+            return items[:50]
 
         for url in urls:
             html = self.fetch_url(url)

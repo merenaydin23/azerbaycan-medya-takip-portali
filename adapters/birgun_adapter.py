@@ -12,15 +12,17 @@ class BirgunAdapter(BaseAdapter):
         )
 
     def fetch_latest_news(self) -> list:
+        rss_urls = [
+            "https://news.google.com/rss/search?q=site:birgun.net&hl=tr&gl=TR&ceid=TR:tr",
+            "https://www.birgun.net/xml/rss.xml"
+        ]
         items = []
-        urls = ["https://www.birgun.net"]
-        seen_links = set()
+        for url in rss_urls:
+            rss_items = self.parse_rss_feed(url, max_items=40)
+            items.extend(rss_items)
 
-        for url in urls:
-            html = self.fetch_url(url)
-            if not html:
-                continue
-            soup = BeautifulSoup(html, "html.parser")
+        if items:
+            return items[:50]
             
             for a_tag in soup.find_all("a", href=True):
                 href = a_tag.get("href")

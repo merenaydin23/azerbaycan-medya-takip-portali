@@ -15,10 +15,10 @@ Her kaynak için önce RSS beslemesi dene, yoksa basit bir scraper (requests + B
 ## HABER SINIFLANDIRMA (2 aşamalı — çok önemli)
 **Aşama 1 (local, ücretsiz, hızlı):** Genişletilmiş bir anahtar kelime/varlık listesiyle (Azerbaycan, Bakü, Aliyev, Nahçıvan, Karabağ, Şuşa, Hankendi, Zangezur koridoru, Ermenistan-Azerbaycan, Türk Devletleri Teşkilatı, TANAP, Güney Kafkasya, Dağlık Karabağ vb.) her taranan haberin başlık ve metnini tara. Bu liste ayrı bir config dosyasında (kolayca genişletilebilir) tutulsun.
 
-**Aşama 2 (Claude API ile):** Aşama 1'de doğrudan eşleşme çıkmayan ama dış politika/Kafkasya/enerji/savunma gibi ilgili kategorilerde yayınlanan haberleri Anthropic Claude API'sine gönder ve şunu sor: "Bu haber Azerbaycan ile doğrudan veya dolaylı ilgili mi? İlgiliyse hangi açıdan (siyasi/ekonomik/güvenlik/kültürel/enerji)? Kısa gerekçe ver." API anahtarını ortam değişkeninden (.env, ANTHROPIC_API_KEY) oku, koda gömme.
+**Aşama 2 (Qwen API ile):** Aşama 1'de doğrudan eşleşme çıkmayan ama dış politika/Kafkasya/enerji/savunma gibi ilgili kategorilerde yayınlanan haberleri Anthropic Qwen API'sine gönder ve şunu sor: "Bu haber Azerbaycan ile doğrudan veya dolaylı ilgili mi? İlgiliyse hangi açıdan (siyasi/ekonomik/güvenlik/kültürel/enerji)? Kısa gerekçe ver." API anahtarını ortam değişkeninden (.env, ANTHROPIC_API_KEY) oku, koda gömme.
 
 ## ÇAPRAZ KARŞILAŞTIRMA VE TUTARSIZLIK TESPİTİ
-Aynı gün toplanan, aynı konudaki haberleri grupla (konu benzerliğine göre). Bu grubu Claude API'ye vererek kaynaklar arasında çelişki/farklılık var mı (farklı rakamlar, çelişkili ifadeler, biri veriyor biri vermiyor) diye sor. Varsa haberi "Tutarsızlık var" etiketiyle işaretle ve kısa bir açıklama notu ekle. Sistem kesin doğru/yanlış hükmü vermiyor, sadece farkı özetleyip insan incelemesine işaret ediyor — bunu arayüzde de böyle ifade et.
+Aynı gün toplanan, aynı konudaki haberleri grupla (konu benzerliğine göre). Bu grubu Qwen API'ye vererek kaynaklar arasında çelişki/farklılık var mı (farklı rakamlar, çelişkili ifadeler, biri veriyor biri vermiyor) diye sor. Varsa haberi "Tutarsızlık var" etiketiyle işaretle ve kısa bir açıklama notu ekle. Sistem kesin doğru/yanlış hükmü vermiyor, sadece farkı özetleyip insan incelemesine işaret ediyor — bunu arayüzde de böyle ifade et.
 
 ## OTOMASYON
 - Sistem her gün saat 07:30'da otomatik olarak tüm kaynakları tarasın (local scheduled task/cron mantığıyla, Python `schedule` kütüphanesi veya benzeri).

@@ -19,7 +19,7 @@ class BaseAdapter:
             "Referer": "https://www.google.com/"
         }
 
-    def fetch_url(self, url: str, timeout: int = 15) -> str:
+    def fetch_url(self, url: str, timeout: int = 6) -> str:
         try:
             response = requests.get(url, headers=self.headers, timeout=timeout)
             if response.status_code == 200:
@@ -41,7 +41,7 @@ class BaseAdapter:
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
 
-    def parse_rss_feed(self, rss_url: str, max_items: int = 25) -> list:
+    def parse_rss_feed(self, rss_url: str, max_items: int = 100) -> list:
         items = []
         xml_content = self.fetch_url(rss_url)
         if not xml_content:
@@ -62,6 +62,8 @@ class BaseAdapter:
                 title_tag = entry.find("title")
                 if title_tag:
                     title = self.clean_text(title_tag.get_text())
+                    if " - " in title and len(title.rsplit(" - ", 1)[0].strip()) > 10:
+                        title = title.rsplit(" - ", 1)[0].strip()
 
                 # Link
                 link_tag = entry.find("link")

@@ -12,15 +12,17 @@ class T24Adapter(BaseAdapter):
         )
 
     def fetch_latest_news(self) -> list:
+        rss_urls = [
+            "https://news.google.com/rss/search?q=site:t24.com.tr&hl=tr&gl=TR&ceid=TR:tr",
+            "https://t24.com.tr/rss"
+        ]
         items = []
-        urls = ["https://t24.com.tr", "https://t24.com.tr/gundem", "https://t24.com.tr/dunya"]
-        seen_links = set()
+        for url in rss_urls:
+            rss_items = self.parse_rss_feed(url, max_items=40)
+            items.extend(rss_items)
 
-        for url in urls:
-            html = self.fetch_url(url)
-            if not html:
-                continue
-            soup = BeautifulSoup(html, "html.parser")
+        if items:
+            return items[:50]
             
             # Find all article links
             for a_tag in soup.find_all("a", href=True):

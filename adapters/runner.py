@@ -4,7 +4,7 @@ from . import ALL_ADAPTER_CLASSES
 
 logger = logging.getLogger("AdaptersRunner")
 
-def run_all_adapters(max_workers: int = 7) -> list:
+def run_all_adapters(max_workers: int = 20) -> list:
     """
     Executes all 14 news adapters concurrently.
     Any single adapter failure is caught and logged, without affecting others.

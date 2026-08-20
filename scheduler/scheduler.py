@@ -66,11 +66,14 @@ def run_media_monitoring_pipeline() -> dict:
         if SERPAPI_KEY:
             try:
                 serp_adapter = SerpApiAdapter()
-                # Run source-specific search
-                for src in SOURCES_CONFIG:
-                    if src.get("domain"):
-                        serp_items = serp_adapter.fetch_source_backup(src["name"], src["domain"], src["category"])
-                        raw_articles.extend(serp_items)
+                # Run source-specific search concurrently
+                sources_with_domain = [src for src in SOURCES_CONFIG if src.get("domain")]
+                def _fetch_src(src):
+                    return serp_adapter.fetch_source_backup(src["name"], src["domain"], src["category"])
+
+                with ThreadPoolExecutor(max_workers=8) as executor:
+                    for items in executor.map(_fetch_src, sources_with_domain):
+                        raw_articles.extend(items)
                 
                 # Run general search once per day
                 global _last_general_serp_run
@@ -116,11 +119,12 @@ def run_media_monitoring_pipeline() -> dict:
                     pass
             return datetime.now()
 
-        # Filter strictly for today (starting at 00:00:00)
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        cutoff_date = today_start
+        # Retain articles from the last 3 days to account for timezone offsets and late night releases
+        cutoff_date = datetime.now() - timedelta(days=3)
         relevant_articles_saved = []
 
+        # Prepare deduplicated list for Stage 1 & Stage 2 processing
+        items_to_process = []
         for item in raw_articles:
             pub_date_str = item.get("publish_date", "")
             pub_dt = parse_publish_date(pub_date_str)
@@ -144,9 +148,13 @@ def run_media_monitoring_pipeline() -> dict:
             if clean_title_str:
                 existing_titles.add(clean_title_str)
 
-            summary = item.get("summary", "")
+            items_to_process.append(item)
 
-            # Stage 1: kelime sınırlı anahtar eşleşme
+        # Stage 1 keyword matching
+        stage2_candidates = []
+        for item in items_to_process:
+            title = clean_leading_time(item.get("title", ""))
+            summary = item.get("summary", "")
             s1_result = check_stage1_relevance(title, summary)
             is_candidate = s1_result.get("is_relevant", False)
 
@@ -159,7 +167,22 @@ def run_media_monitoring_pipeline() -> dict:
                 item["relevance_aspect"] = item["ilgi_kategorisi"]
                 item["llm_relevance_explanation"] = item["gerekce"]
             elif s1_result.get("is_candidate_for_stage2"):
-                # Zayıf kelime / bağlam adayı → Gemini/Qwen ile doğrula
+                stage2_candidates.append(item)
+            else:
+                item["ilgili_mi"] = 0
+                item["ilgi_kategorisi"] = "İlgisiz"
+                item["guven_skoru"] = 0.0
+                item["gerekce"] = ""
+                item["relevance_status"] = "Genel (Filtresiz)"
+                item["relevance_aspect"] = "Genel"
+                item["llm_relevance_explanation"] = ""
+
+        # Run Stage 2 LLM relevance concurrently for stage2_candidates
+        if stage2_candidates:
+            logger.info(f"Running Stage 2 LLM evaluation concurrently for {len(stage2_candidates)} candidates...")
+            def _eval_stage2(item):
+                title = clean_leading_time(item.get("title", ""))
+                summary = item.get("summary", "")
                 s2 = check_stage2_llm_relevance(
                     title,
                     summary,
@@ -182,15 +205,12 @@ def run_media_monitoring_pipeline() -> dict:
                     item["relevance_status"] = "Genel (Filtresiz)"
                     item["relevance_aspect"] = "Genel"
                     item["llm_relevance_explanation"] = ""
-            else:
-                item["ilgili_mi"] = 0
-                item["ilgi_kategorisi"] = "İlgisiz"
-                item["guven_skoru"] = 0.0
-                item["gerekce"] = ""
-                item["relevance_status"] = "Genel (Filtresiz)"
-                item["relevance_aspect"] = "Genel"
-                item["llm_relevance_explanation"] = ""
 
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                list(executor.map(_eval_stage2, stage2_candidates))
+
+        # Save processed items to DB
+        for item in items_to_process:
             news_id = save_news_item(item)
             item["id"] = news_id
             relevant_articles_saved.append(item)
@@ -241,17 +261,18 @@ def _needs_az_brief(summary: str) -> bool:
     return False
 
 
-def summarize_azerbaijan_agenda(articles: list):
-    """Yalnızca Azerbaycan Gündemi haberleri için genel içerik açıklama özeti üretir."""
+def summarize_azerbaijan_agenda(articles: list, max_workers: int = 4):
+    """Yalnızca Azerbaycan Gündemi haberleri için genel içerik açıklama özeti üretir (paralel)."""
     if not articles:
         return
 
-    logger.info(f"Generating content briefs for {len(articles)} Azerbaijan agenda articles...")
-    for item in articles:
+    logger.info(f"Generating content briefs concurrently (workers={max_workers}) for {len(articles)} Azerbaijan agenda articles...")
+    
+    def _process_single(item):
         try:
             news_id = item.get("id")
             if not news_id:
-                continue
+                return
             title = item.get("title") or ""
             raw = item.get("summary") or ""
             content = title if _needs_az_brief(raw) else raw
@@ -264,10 +285,12 @@ def summarize_azerbaijan_agenda(articles: list):
                 update_news_summary(news_id, brief)
                 item["summary"] = brief
                 logger.info(f"AZ brief saved for article ID {news_id}")
-            time.sleep(3)
         except Exception as e:
             logger.error(f"Error creating AZ brief for {item.get('id')}: {e}")
-            time.sleep(3)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        list(executor.map(_process_single, articles))
+
     logger.info("Azerbaijan agenda briefing complete.")
 
 
@@ -301,15 +324,16 @@ def trigger_manual_refresh():
     return thread
 
 def _scheduler_loop():
-    logger.info(f"Background scheduler initiated. Daily scheduled time: {SCHEDULE_TIME}")
-    schedule.every().day.at(SCHEDULE_TIME).do(run_media_monitoring_pipeline)
+    logger.info("Background scheduler initiated. Auto-scanning sources every 1 minute.")
+    # Run immediate scan on startup, then every 1 minute
+    schedule.every(1).minutes.do(run_media_monitoring_pipeline)
 
     while True:
         try:
             schedule.run_pending()
         except Exception as e:
             logger.error(f"Scheduler exception: {e}")
-        time.sleep(30)
+        time.sleep(5)
 
 def start_background_scheduler():
     """Starts the daily cron scheduler. Keep python run.py running for scans to continue."""

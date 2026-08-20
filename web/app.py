@@ -200,7 +200,7 @@ def create_app():
 
         # Get news for selected date and sort chronologically (newest first)
         all_news = get_news_by_date(selected_date, only_relevant=only_relevant)
-        all_news.sort(key=lambda n: str(n.get("publish_date") or n.get("scraped_at") or ""), reverse=True)
+        all_news.sort(key=lambda n: str(n.get("publish_date") or ""), reverse=True)
 
         # Calculate counts per source
         raw_source_counts = {}

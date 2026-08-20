@@ -41,9 +41,9 @@ def extract_json_object(text: str) -> str:
         return text[start:end+1]
     return ""
 
-def call_llm(messages: list, temperature: float = 0.2, max_tokens: int = 800) -> str:
+def call_llm(messages: list, temperature: float = 0.2, max_tokens: int = 600) -> str:
     """
-    Calls the LLM endpoint via OpenAI compatible chat/completions API.
+    Calls the LLM endpoint via OpenAI compatible chat/completions API with fast timeout.
     """
     if not LLM_API_KEY:
         logger.warning("LLM_API_KEY is not set. Skipping LLM request.")
@@ -61,23 +61,17 @@ def call_llm(messages: list, temperature: float = 0.2, max_tokens: int = 800) ->
         "max_tokens": max_tokens
     }
 
-    for attempt in range(2):
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=30, verify=False)
-            if response.status_code == 200:
-                data = response.json()
-                return data["choices"][0]["message"]["content"]
-            elif response.status_code == 429:
-                logger.warning(f"LLM rate limit (429) hit. Waiting 10s before retry (attempt {attempt+1}/2)...")
-                import time
-                time.sleep(10)
-            else:
-                logger.error(f"LLM API returned status {response.status_code}: {response.text}")
-                return ""
-        except Exception as e:
-            logger.error(f"Error connecting to LLM API ({url}): {e}")
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=6, verify=False)
+        if response.status_code == 200:
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        else:
+            logger.error(f"LLM API returned status {response.status_code}: {response.text}")
             return ""
-    return ""
+    except Exception as e:
+        logger.error(f"Error connecting to LLM API ({url}): {e}")
+        return ""
 
 from .azerbaijan_relevance_prompt import AZERBAIJAN_RELEVANCE_SYSTEM_PROMPT, build_relevance_user_prompt
 
@@ -148,6 +142,44 @@ def check_stage2_llm_relevance(title: str, summary: str, source_name: str = "Bil
         }
 
 
+def clean_llm_summary_output(response_text: str) -> str:
+    """Cleans LLM response text, stripping reasoning steps and CoT monologues."""
+    if not response_text:
+        return ""
+
+    # 1. Extract content inside <summary>...</summary> tags if present
+    match = re.search(r"<summary>(.*?)</summary>", response_text, re.DOTALL | re.IGNORECASE)
+    if match:
+        extracted = match.group(1).strip()
+        if extracted and not ("Analyze the Request" in extracted or "Internal Monologue" in extracted):
+            return extracted
+
+    # 2. Remove thinking tags <thinking>...</thinking> or <think>...</think>
+    text = re.sub(r"(?i)<think(?:ing)?>.*?</think(?:ing)?>", "", response_text, flags=re.DOTALL)
+
+    # 3. If response contains CoT monologue ("Analyze the Request", "Drafting", "Attempt"), extract final attempt or filter lines
+    if "Analyze the Request" in text or "Drafting" in text or "Internal Monologue" in text or "Attempt" in text:
+        attempts = re.findall(r'Attempt\s*\d+:\*?\s*([^\n\r]+)', text)
+        if attempts:
+            text = attempts[-1].strip()
+        else:
+            lines = [l.strip() for l in text.splitlines() if l.strip()]
+            filtered = [
+                l for l in lines 
+                if not re.match(r'^(\d+\.|\*)\s*\*\*(Analyze|Drafting|Role|Task|Constraint|Input|Person|Action|Event|Source)', l, re.IGNORECASE)
+                and not l.startswith("```")
+                and not l.startswith("Attempt")
+            ]
+            text = " ".join(filtered)
+
+    # 4. Remove prefix labels like "Özet:", "Özetçe:", "Xülasə:", "Summary:"
+    text = re.sub(r"^(Özet:|Özetçe:|Xülasə:|Summary:)\s*", "", text.strip(), flags=re.IGNORECASE)
+
+    # 5. Clean trailing/leading Markdown and quotes
+    text = text.strip('"` ')
+    return text
+
+
 def generate_az_agenda_brief(title: str, text: str, ilgi_kategorisi: str = "") -> str:
     """
     Azerbaycan Gündemi haberleri için genel, anlaşılır 2-3 cümlelik içerik özeti.
@@ -157,32 +189,19 @@ def generate_az_agenda_brief(title: str, text: str, ilgi_kategorisi: str = "") -
 Haber Metni: {text or title}
 İlgi Açısı: {kategori}
 
-Görev: Bu Azerbaycan gündemi haberinin içeriğini genel ve net şekilde anlat.
-Kurallar:
-- Tam 2 veya 3 cümle yaz.
-- Tarafsız, resmi ve anlaşılır ol (büyükelçilik brifing dili).
-- Konuyu özetle: ne oldu, kimler/nerede, neden önemli (Azerbaycan boyutu).
-- Başlık, madde, emoji veya giriş cümlesi kullanma.
-Doğrudan özeti <summary>...</summary> etiketleri içine yaz. Başka hiçbir şey yazma."""
+GÖREV: Bu Azerbaycan gündemi haberinin içeriğini genel ve net şekilde 2 veya 3 Türkçe cümle ile özetle.
+ÖNEMLİ KURAL: Kesinlikle analiz adımları, reasoning, 'Analyze the Request', madde işaretleri veya ingilizce açıklamalar YAZMA!
+Yalnızca net Türkçe özeti <summary> ve </summary> etiketleri arasına koy."""
 
     messages = [
         {
             "role": "system",
             "content": (
-                "Sen Azerbaycan gündemi için kurumsal brifing özeti yazarsın. "
-                "Yalnızca <summary> ve </summary> arasına 2 veya 3 net Türkçe cümle koyarsın."
+                "Sen Azerbaycan gündemi için doğrudan kurumsal brifing özeti üreten bir yapay zekasın. "
+                "HİÇBİR düşünce adımı veya ingilizce analiz metni yazmadan YALNIZCA <summary>...</summary> içine 2-3 Türkçe özet cümlesi yazarsın."
             ),
         },
         {"role": "user", "content": prompt},
     ]
-    response_text = call_llm(messages, temperature=0.2, max_tokens=800)
-    if not response_text:
-        return ""
-
-    match = re.search(r"<summary>(.*?)</summary>", response_text, re.DOTALL | re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-
-    response_text = re.sub(r"(?i)<thinking>.*?</thinking>", "", response_text, flags=re.DOTALL)
-    response_text = re.sub(r"^(Özet:|Özetçe:|Xülasə:)\s*", "", response_text.strip(), flags=re.IGNORECASE)
-    return response_text.strip()
+    response_text = call_llm(messages, temperature=0.1, max_tokens=600)
+    return clean_llm_summary_output(response_text)
