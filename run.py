@@ -27,4 +27,4 @@ if __name__ == "__main__":
     # Start Flask Web App
     app = create_app()
     logger.info(f"Web Arayüzü Başlatılıyor: http://{HOST}:{PORT}")
-    app.run(host=HOST, port=PORT, debug=DEBUG, use_reloader=False)
+    app.run(host=HOST, port=PORT, debug=DEBUG, use_reloader=False, threaded=True)
