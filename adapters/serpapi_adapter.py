@@ -147,6 +147,21 @@ class SerpApiAdapter:
                 elif m_day:
                     publish_date = (now - datetime.timedelta(days=int(m_day.group(1)))).strftime("%Y-%m-%d %H:%M:%S")
 
+            # Check if title has explicit date
+            import html
+            t_clean = html.unescape(title)
+            month_map = {
+                "ocak": "01", "şubat": "02", "mart": "03", "nisan": "04", "mayıs": "05", "haziran": "06",
+                "temmuz": "07", "ağustos": "08", "agustos": "08", "eylül": "09", "ekim": "10", "kasım": "11", "aralık": "12"
+            }
+            m_tdate = re.search(r'\b([0-3]?\d)\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Agustos|Eylül|Ekim|Kasım|Aralık)\s*(\d{4})?\b', t_clean, re.I)
+            if m_tdate:
+                t_day = int(m_tdate.group(1))
+                t_mon = month_map.get(m_tdate.group(2).lower(), "08")
+                t_yr = m_tdate.group(3) or datetime.datetime.now().strftime("%Y")
+                if 1 <= t_day <= 31:
+                    publish_date = f"{t_yr}-{t_mon}-{t_day:02d} 12:00:00"
+
             if not publish_date:
                 publish_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 

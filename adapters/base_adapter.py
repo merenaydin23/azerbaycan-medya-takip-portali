@@ -111,6 +111,25 @@ class BaseAdapter:
             return True
         return False
 
+    def extract_explicit_date_from_title(self, title: str) -> str:
+        if not title:
+            return None
+        import html
+        t_clean = html.unescape(title)
+        month_map = {
+            "ocak": "01", "şubat": "02", "mart": "03", "nisan": "04", "mayıs": "05", "haziran": "06",
+            "temmuz": "07", "ağustos": "08", "agustos": "08", "eylül": "09", "ekim": "10", "kasım": "11", "aralık": "12"
+        }
+        m = re.search(r'\b([0-3]?\d)\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Agustos|Eylül|Ekim|Kasım|Aralık)\s*(\d{4})?\b', t_clean, re.I)
+        if m:
+            day = int(m.group(1))
+            month_str = m.group(2).lower()
+            year = m.group(3) or datetime.now().strftime("%Y")
+            month = month_map.get(month_str, "08")
+            if 1 <= day <= 31:
+                return f"{year}-{month}-{day:02d} 12:00:00"
+        return None
+
     def parse_rss_feed(self, rss_url: str, max_items: int = 100) -> list:
         items = []
         xml_content = self.fetch_url(rss_url)
@@ -179,10 +198,11 @@ class BaseAdapter:
                             except:
                                 pass
 
-                    if dt_obj:
-                        pub_date = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
-                    else:
-                        pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                explicit_date = self.extract_explicit_date_from_title(title)
+                if explicit_date:
+                    pub_date = explicit_date
+                elif dt_obj:
+                    pub_date = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
                 else:
                     pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
