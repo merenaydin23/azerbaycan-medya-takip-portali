@@ -74,10 +74,17 @@ def init_db():
 
 def clean_leading_time(text: str) -> str:
     import re
+    import html
     if not text:
         return ""
-    # Matches "14:24 ", "14.24 ", "14:24:00 ", "14:24 - " etc.
+    # Unescape HTML entities (&nbsp;, &amp;, &quot; etc.)
+    text = html.unescape(text)
+    # Strip leading timestamps "14:24 ", "14.24 - " etc.
     text = re.sub(r'^\d{1,2}[:.]\d{2}(:\d{2})?\s*[-–—]?\s*', '', text)
+    # Strip leading clickbait prefixes "SON DAKİKA:", "CANLI YAYIN:"
+    text = re.sub(r'^(SON DAKİKA|CANLI|FLASH|ÖZEL HABER)\s*[:|-]?\s*', '', text, flags=re.IGNORECASE)
+    # Normalize whitespace
+    text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
 def save_news_item(item: dict) -> int:
