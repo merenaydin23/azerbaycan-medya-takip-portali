@@ -81,20 +81,37 @@ class BaseAdapter:
                 if author_tag:
                     author = self.clean_text(author_tag.get_text())
 
-                # Pub Date
+                # Pub Date (Parses RFC 822, ISO 8601, Atom, and custom formats)
                 import email.utils
-                pub_date_tag = entry.find("pubDate") or entry.find("published") or entry.find("dc:date")
+                pub_date_tag = entry.find("pubDate") or entry.find("published") or entry.find("dc:date") or entry.find("updated")
                 if pub_date_tag:
                     raw_pub_date = self.clean_text(pub_date_tag.get_text())
-                    # Standardize format
+                    dt_obj = None
                     try:
                         parsed_tuple = email.utils.parsedate_tz(raw_pub_date)
                         if parsed_tuple:
-                            dt = datetime.fromtimestamp(email.utils.mktime_tz(parsed_tuple))
-                            pub_date = dt.strftime("%Y-%m-%d %H:%M:%S")
-                        else:
-                            pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            dt_obj = datetime.fromtimestamp(email.utils.mktime_tz(parsed_tuple))
                     except:
+                        pass
+
+                    if not dt_obj:
+                        try:
+                            clean_iso = raw_pub_date.split(".")[0].replace("Z", "")
+                            dt_obj = datetime.fromisoformat(clean_iso)
+                        except:
+                            pass
+
+                    if not dt_obj:
+                        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M", "%a, %d %b %Y %H:%M:%S %z", "%a, %d %b %Y %H:%M:%S GMT"):
+                            try:
+                                dt_obj = datetime.strptime(raw_pub_date, fmt)
+                                break
+                            except:
+                                pass
+
+                    if dt_obj:
+                        pub_date = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
+                    else:
                         pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 else:
                     pub_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

@@ -120,15 +120,34 @@ class SerpApiAdapter:
             if not title or not link:
                 continue
 
-            # Parse publish date
+            # Parse publish date (supports iso_date and relative text like '2 saat önce', '15 dak önce')
             pub_date_str = res.get("iso_date")
+            raw_date_str = res.get("date", "")
+            publish_date = None
+
             if pub_date_str:
                 try:
-                    dt = datetime.datetime.fromisoformat(pub_date_str.replace("Z", "+00:00"))
+                    clean_iso = pub_date_str.split(".")[0].replace("Z", "")
+                    dt = datetime.datetime.fromisoformat(clean_iso)
                     publish_date = dt.strftime("%Y-%m-%d %H:%M:%S")
                 except:
-                    publish_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            else:
+                    pass
+
+            if not publish_date and raw_date_str:
+                import re
+                now = datetime.datetime.now()
+                raw_lower = raw_date_str.lower()
+                m_min = re.search(r"(\d+)\s*(?:dak|min)", raw_lower)
+                m_hr = re.search(r"(\d+)\s*(?:saat|hour|hr)", raw_lower)
+                m_day = re.search(r"(\d+)\s*(?:gün|day)", raw_lower)
+                if m_min:
+                    publish_date = (now - datetime.timedelta(minutes=int(m_min.group(1)))).strftime("%Y-%m-%d %H:%M:%S")
+                elif m_hr:
+                    publish_date = (now - datetime.timedelta(hours=int(m_hr.group(1)))).strftime("%Y-%m-%d %H:%M:%S")
+                elif m_day:
+                    publish_date = (now - datetime.timedelta(days=int(m_day.group(1)))).strftime("%Y-%m-%d %H:%M:%S")
+
+            if not publish_date:
                 publish_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # Determine source name and category
