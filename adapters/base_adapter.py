@@ -127,7 +127,13 @@ class BaseAdapter:
             year = m.group(3) or datetime.now().strftime("%Y")
             month = month_map.get(month_str, "08")
             if 1 <= day <= 31:
-                return f"{year}-{month}-{day:02d} 12:00:00"
+                dt_str = f"{year}-{month}-{day:02d} 12:00:00"
+                try:
+                    dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+                    if dt <= datetime.now():
+                        return dt_str
+                except:
+                    pass
         return None
 
     def parse_rss_feed(self, rss_url: str, max_items: int = 100) -> list:

@@ -1,4 +1,6 @@
 import os
+import re
+import html
 import logging
 import requests
 import datetime
@@ -160,7 +162,13 @@ class SerpApiAdapter:
                 t_mon = month_map.get(m_tdate.group(2).lower(), "08")
                 t_yr = m_tdate.group(3) or datetime.datetime.now().strftime("%Y")
                 if 1 <= t_day <= 31:
-                    publish_date = f"{t_yr}-{t_mon}-{t_day:02d} 12:00:00"
+                    dt_str = f"{t_yr}-{t_mon}-{t_day:02d} 12:00:00"
+                    try:
+                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+                        if dt <= datetime.datetime.now():
+                            publish_date = dt_str
+                    except:
+                        pass
 
             if not publish_date:
                 publish_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
